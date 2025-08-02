@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, extract
 from typing import List, Optional
@@ -23,6 +24,34 @@ from app.schemas.transaction import (
 )
 
 router = APIRouter()
+
+
+@router.get("/import/template")
+async def download_import_template():
+    """
+    Download a sample CSV template for importing transactions.
+    """
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "..", "..", "static", "transaction_template.csv")
+    
+    if not os.path.exists(template_path):
+        # Create template on the fly if it doesn't exist
+        template_content = """date,amount,description,category,type,tags
+2024-01-15,1500.00,Grocery shopping at Walmart,Food & Dining,expense,"groceries,monthly"
+2024-01-16,85.50,Gas for car,Transportation,expense,"fuel,car"
+2024-01-20,3500.00,Monthly salary,Salary,income,"salary,monthly"
+2024-01-22,120.00,Dinner with friends,Food & Dining,expense,"restaurant,social"
+2024-01-25,50.00,Netflix subscription,Entertainment,expense,"subscription,monthly"
+"""
+        os.makedirs(os.path.dirname(template_path), exist_ok=True)
+        with open(template_path, 'w') as f:
+            f.write(template_content)
+    
+    return FileResponse(
+        path=template_path,
+        filename="transaction_import_template.csv",
+        media_type="text/csv"
+    )
 
 
 @router.get("/", response_model=List[TransactionWithCategory])
