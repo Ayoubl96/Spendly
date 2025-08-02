@@ -18,13 +18,25 @@ export interface Transaction {
     icon?: string;
   };
   recurring: boolean;
+  recurring_frequency?: string;
   tags?: string;
+  receipt_url?: string;
   created_at: string;
   updated_at: string;
 }
 
+export interface TransactionSummary {
+  total_income: number;
+  total_expenses: number;
+  net_amount: number;
+  transaction_count: number;
+  expense_by_category: { [key: string]: number };
+  income_by_category: { [key: string]: number };
+}
+
 interface TransactionState {
   transactions: Transaction[];
+  summary: TransactionSummary | null;
   isLoading: boolean;
   error: string | null;
   totalCount: number;
@@ -32,6 +44,7 @@ interface TransactionState {
 
 const initialState: TransactionState = {
   transactions: [],
+  summary: null,
   isLoading: false,
   error: null,
   totalCount: 0,
@@ -57,11 +70,36 @@ export const fetchTransactions = createAsyncThunk(
   }
 );
 
+export const fetchTransactionSummary = createAsyncThunk(
+  'transactions/fetchSummary',
+  async (params: {
+    start_date?: string;
+    end_date?: string;
+  }, { getState }) => {
+    const state = getState() as RootState;
+    const response = await axios.get(`${API_URL}/transactions/summary`, {
+      params,
+      headers: { Authorization: `Bearer ${state.auth.token}` },
+    });
+    return response.data;
+  }
+);
+
 export const createTransaction = createAsyncThunk(
   'transactions/createTransaction',
-  async (transaction: Partial<Transaction>, { getState }) => {
+  async (transactionData: {
+    amount: number;
+    currency: string;
+    date: string;
+    description?: string;
+    type: 'income' | 'expense';
+    category_id?: string;
+    recurring: boolean;
+    recurring_frequency?: string;
+    tags?: string;
+  }, { getState }) => {
     const state = getState() as RootState;
-    const response = await axios.post(`${API_URL}/transactions`, transaction, {
+    const response = await axios.post(`${API_URL}/transactions`, transactionData, {
       headers: { Authorization: `Bearer ${state.auth.token}` },
     });
     return response.data;
@@ -70,9 +108,22 @@ export const createTransaction = createAsyncThunk(
 
 export const updateTransaction = createAsyncThunk(
   'transactions/updateTransaction',
-  async ({ id, ...updates }: Partial<Transaction> & { id: string }, { getState }) => {
+  async ({ id, data }: {
+    id: string;
+    data: Partial<{
+      amount: number;
+      currency: string;
+      date: string;
+      description: string;
+      type: 'income' | 'expense';
+      category_id: string;
+      recurring: boolean;
+      recurring_frequency: string;
+      tags: string;
+    }>;
+  }, { getState }) => {
     const state = getState() as RootState;
-    const response = await axios.put(`${API_URL}/transactions/${id}`, updates, {
+    const response = await axios.put(`${API_URL}/transactions/${id}`, data, {
       headers: { Authorization: `Bearer ${state.auth.token}` },
     });
     return response.data;
@@ -127,6 +178,10 @@ const transactionSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || 'Failed to fetch transactions';
       })
+      // Fetch summary
+      .addCase(fetchTransactionSummary.fulfilled, (state, action) => {
+        state.summary = action.payload;
+      })
       // Create transaction
       .addCase(createTransaction.fulfilled, (state, action) => {
         state.transactions.unshift(action.payload);
@@ -143,6 +198,11 @@ const transactionSlice = createSlice({
       .addCase(deleteTransaction.fulfilled, (state, action) => {
         state.transactions = state.transactions.filter(t => t.id !== action.payload);
         state.totalCount -= 1;
+      })
+      // Import transactions
+      .addCase(importTransactions.fulfilled, (state, action) => {
+        // Refresh transactions after import
+        state.error = null;
       });
   },
 });

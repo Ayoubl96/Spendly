@@ -1,0 +1,6 @@
+date,amount,description,category,type,tags
+2024-01-15,1500.00,Grocery shopping at Walmart,Food & Dining,expense,"groceries,monthly"
+2024-01-16,85.50,Gas for car,Transportation,expense,"fuel,car"
+2024-01-20,3500.00,Monthly salary,Salary,income,"salary,monthly"
+2024-01-22,120.00,Dinner with friends,Food & Dining,expense,"restaurant,social"
+2024-01-25,50.00,Netflix subscription,Entertainment,expense,"subscription,monthly"
