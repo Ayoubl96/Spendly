@@ -1,36 +1,39 @@
-from sqlalchemy import Column, String, Numeric, Date, ForeignKey, DateTime, Enum
-from sqlalchemy.sql import func
+from sqlalchemy import Column, String, ForeignKey, Enum as SQLEnum, DateTime, Numeric, Date, Boolean
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import uuid
+from datetime import datetime
 import enum
 
 
 class BudgetPeriod(str, enum.Enum):
-    MONTHLY = "monthly"
-    YEARLY = "yearly"
     WEEKLY = "weekly"
-    CUSTOM = "custom"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    YEARLY = "yearly"
 
 
 class Budget(Base):
     __tablename__ = "budgets"
-    
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    category_id = Column(String, ForeignKey("categories.id"), nullable=True)  # Null means total budget
-    name = Column(String, nullable=False)
-    amount = Column(Numeric(10, 2), nullable=False)
-    currency = Column(String(3), default="EUR")
-    period = Column(Enum(BudgetPeriod), nullable=False, default=BudgetPeriod.MONTHLY)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    name = Column(String(100), nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
+    currency = Column(String(3), default="USD", nullable=False)
+    period = Column(SQLEnum(BudgetPeriod), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+    is_active = Column(Boolean, default=True)
+    alert_threshold = Column(Numeric(5, 2), default=80.00)  # Percentage for alerts
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     # Relationships
     user = relationship("User", back_populates="budgets")
     category = relationship("Category", back_populates="budgets")
-    
+
     def __repr__(self):
         return f"<Budget(name='{self.name}', amount={self.amount}, period='{self.period.value}')>"
