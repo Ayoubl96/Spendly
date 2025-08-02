@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
@@ -19,7 +19,7 @@ class AssetType(str, Enum):
 class AssetBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     type: AssetType
-    value: Decimal = Field(..., ge=0, decimal_places=2)
+    value: Decimal = Field(..., ge=0)
     currency: str = Field("USD", min_length=3, max_length=3)
     institution: Optional[str] = Field(None, max_length=100)
     account_number: Optional[str] = Field(None, max_length=50)
@@ -34,7 +34,7 @@ class AssetCreate(AssetBase):
 class AssetUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     type: Optional[AssetType] = None
-    value: Optional[Decimal] = Field(None, ge=0, decimal_places=2)
+    value: Optional[Decimal] = Field(None, ge=0)
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
     institution: Optional[str] = Field(None, max_length=100)
     account_number: Optional[str] = Field(None, max_length=50)
@@ -48,8 +48,12 @@ class AssetInDBBase(AssetBase):
     created_at: datetime
     updated_at: datetime
 
+    @field_serializer('id', 'user_id', when_used='unless-none')
+    def serialize_uuid_fields(self, value: UUID) -> str:
+        return str(value)
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Asset(AssetInDBBase):

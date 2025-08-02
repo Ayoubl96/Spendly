@@ -1,4 +1,4 @@
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost/api/v1';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api/v1';
 
 export const DATE_FORMAT = 'yyyy-MM-dd';
 export const DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';

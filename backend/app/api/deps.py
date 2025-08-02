@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -29,10 +30,12 @@ async def get_current_user(
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
-    except JWTError:
+        # Convert string UUID to UUID object for database query
+        user_uuid = UUID(token_data.user_id)
+    except (JWTError, ValueError):
         raise credentials_exception
     
-    user = db.query(User).filter(User.id == token_data.user_id).first()
+    user = db.query(User).filter(User.id == user_uuid).first()
     if user is None:
         raise credentials_exception
     return user

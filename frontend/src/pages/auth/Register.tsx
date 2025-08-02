@@ -130,7 +130,7 @@ const Register: React.FC = () => {
           margin="normal"
           {...register('confirmPassword', {
             required: 'Please confirm your password',
-            validate: (value) => value === password || 'Passwords do not match',
+            validate: (value: string) => value === password || 'Passwords do not match',
           })}
           error={!!errors.confirmPassword}
           helperText={errors.confirmPassword?.message}

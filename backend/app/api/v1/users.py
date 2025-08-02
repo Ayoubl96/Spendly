@@ -46,6 +46,12 @@ async def update_user_me(
     if user_update.password is not None:
         current_user.hashed_password = security.get_password_hash(user_update.password)
     
+    if user_update.is_active is not None:
+        current_user.is_active = user_update.is_active
+    
+    if user_update.is_superuser is not None:
+        current_user.is_superuser = user_update.is_superuser
+    
     db.commit()
     db.refresh(current_user)
     

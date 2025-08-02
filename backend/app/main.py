@@ -1,12 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from sqlalchemy import text
 from app.core.database import engine, Base
 from app.api.v1 import (
     auth, users, transactions, budgets, analytics, categories, assets, networth
 )
 
-# Create database tables
+# Ensure UUID extension is enabled and create tables if they don't exist
+try:
+    with engine.connect() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"))
+        connection.commit()
+except Exception as e:
+    print(f"Warning: Could not enable UUID extension: {e}")
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(

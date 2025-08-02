@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 from typing import Optional, List
 from datetime import datetime, date
 from decimal import Decimal
@@ -13,18 +13,19 @@ class TransactionType(str, Enum):
 
 class TransactionBase(BaseModel):
     category_id: Optional[UUID] = None
-    amount: Decimal = Field(..., gt=0, decimal_places=2)
+    amount: Decimal = Field(..., gt=0)
     currency: str = Field("USD", min_length=3, max_length=3)
     date: date
     description: Optional[str] = None
     type: TransactionType
     recurring: bool = False
-    recurring_frequency: Optional[str] = Field(None, regex="^(daily|weekly|monthly|yearly)$")
+    recurring_frequency: Optional[str] = Field(None, pattern="^(daily|weekly|monthly|yearly)$")
     tags: Optional[str] = None
 
-    @validator('recurring_frequency')
-    def validate_recurring_frequency(cls, v, values):
-        if values.get('recurring') and not v:
+    @field_validator('recurring_frequency')
+    @classmethod
+    def validate_recurring_frequency(cls, v, info):
+        if info.data.get('recurring') and not v:
             raise ValueError('recurring_frequency is required when recurring is True')
         return v
 
@@ -35,13 +36,13 @@ class TransactionCreate(TransactionBase):
 
 class TransactionUpdate(BaseModel):
     category_id: Optional[UUID] = None
-    amount: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
+    amount: Optional[Decimal] = Field(None, gt=0)
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
     date: Optional[date] = None
     description: Optional[str] = None
     type: Optional[TransactionType] = None
     recurring: Optional[bool] = None
-    recurring_frequency: Optional[str] = Field(None, regex="^(daily|weekly|monthly|yearly)$")
+    recurring_frequency: Optional[str] = Field(None, pattern="^(daily|weekly|monthly|yearly)$")
     tags: Optional[str] = None
 
 
@@ -52,8 +53,12 @@ class TransactionInDBBase(TransactionBase):
     created_at: datetime
     updated_at: datetime
 
+    @field_serializer('id', 'user_id', 'category_id', when_used='unless-none')
+    def serialize_uuid_fields(self, value: UUID) -> str:
+        return str(value)
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Transaction(TransactionInDBBase):
