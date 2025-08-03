@@ -1,10 +1,9 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { theme } from './theme';
+import { Toaster } from './components/ui/toaster';
 import { useAppSelector, useAppDispatch } from './store/hooks';
 import { fetchCurrentUser } from './store/slices/authSlice';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -31,8 +30,7 @@ function App() {
   }, [dispatch, token, user]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeProvider>
       <Router>
         <Routes>
           {/* Auth Routes */}
@@ -53,6 +51,7 @@ function App() {
           </Route>
         </Routes>
       </Router>
+      <Toaster />
     </ThemeProvider>
   );
 }

@@ -1,32 +1,21 @@
 import React, { useState } from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Box,
-  Typography,
-  Chip,
-  Grid,
-  InputAdornment,
-} from '@mui/material';
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon,
+  Trash2 as DeleteIcon,
+  Plus as AddIcon,
   Circle as CircleIcon,
-} from '@mui/icons-material';
+} from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
   createCategory,
@@ -51,7 +40,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ open, onClose, type }
     type: type || 'expense',
     color: '#2196F3',
     icon: '',
-    parent_id: '',
+    parent_id: 'none',
   });
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -68,7 +57,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ open, onClose, type }
       type: type || 'expense',
       color: '#2196F3',
       icon: '',
-      parent_id: '',
+      parent_id: 'none',
     });
   };
 
@@ -79,7 +68,7 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ open, onClose, type }
       type: category.type,
       color: category.color,
       icon: category.icon || '',
-      parent_id: category.parent_id || '',
+      parent_id: category.parent_id || 'none',
     });
   };
 
@@ -93,12 +82,15 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ open, onClose, type }
               name: formData.name,
               color: formData.color,
               icon: formData.icon || undefined,
-              parent_id: formData.parent_id || undefined,
+              parent_id: formData.parent_id === 'none' ? undefined : formData.parent_id,
             },
           })
         ).unwrap();
       } else {
-        await dispatch(createCategory(formData)).unwrap();
+        await dispatch(createCategory({
+          ...formData,
+          parent_id: formData.parent_id === 'none' ? undefined : formData.parent_id,
+        })).unwrap();
       }
       handleAddCategory(); // Reset form
     } catch (error) {
@@ -122,21 +114,35 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ open, onClose, type }
     
     return (
       <React.Fragment key={category.id}>
-        <ListItem sx={{ pl: level * 4 }}>
-          <CircleIcon sx={{ color: category.color, mr: 2 }} />
-          <ListItemText
-            primary={category.name}
-            secondary={subcategories.length > 0 ? `${subcategories.length} subcategories` : null}
-          />
-          <ListItemSecondaryAction>
-            <IconButton edge="end" onClick={() => handleEditCategory(category)}>
-              <EditIcon />
-            </IconButton>
-            <IconButton edge="end" onClick={() => setDeleteConfirmId(category.id)}>
-              <DeleteIcon />
-            </IconButton>
-          </ListItemSecondaryAction>
-        </ListItem>
+        <div className={`flex items-center justify-between p-3 hover:bg-muted/50 rounded-md ${level > 0 ? 'ml-' + (level * 4) : ''}`}>
+          <div className="flex items-center gap-3">
+            <CircleIcon className="h-4 w-4" style={{ color: category.color }} />
+            <div>
+              <p className="font-medium">{category.name}</p>
+              {subcategories.length > 0 && (
+                <p className="text-sm text-muted-foreground">{subcategories.length} subcategories</p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleEditCategory(category)}
+              className="h-8 w-8 p-0"
+            >
+              <EditIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setDeleteConfirmId(category.id)}
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <DeleteIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
         {subcategories.map((subcat) => renderCategoryItem(subcat, level + 1))}
       </React.Fragment>
     );
@@ -144,144 +150,152 @@ const CategoryManager: React.FC<CategoryManagerProps> = ({ open, onClose, type }
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">
-              Manage {type ? `${type.charAt(0).toUpperCase() + type.slice(1)} ` : ''}Categories
-            </Typography>
-            <Button
-              startIcon={<AddIcon />}
-              variant="contained"
-              size="small"
-              onClick={handleAddCategory}
-            >
-              Add Category
-            </Button>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={7}>
-              <Typography variant="subtitle2" gutterBottom>
-                Categories
-              </Typography>
-              <List>
+      <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <div className="flex justify-between items-center">
+              <DialogTitle>
+                Manage {type ? `${type.charAt(0).toUpperCase() + type.slice(1)} ` : ''}Categories
+              </DialogTitle>
+              <Button onClick={handleAddCategory} className="gap-2">
+                <AddIcon className="h-4 w-4" />
+                Add Category
+              </Button>
+            </div>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-6 py-4">
+            <div className="md:col-span-4">
+              <h3 className="font-medium mb-4">Categories</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
                 {rootCategories.length === 0 ? (
-                  <ListItem>
-                    <ListItemText
-                      primary="No categories yet"
-                      secondary="Click 'Add Category' to create your first category"
-                    />
-                  </ListItem>
+                  <div className="p-4 text-center text-muted-foreground">
+                    <p className="font-medium">No categories yet</p>
+                    <p className="text-sm">Click 'Add Category' to create your first category</p>
+                  </div>
                 ) : (
                   rootCategories.map((category) => renderCategoryItem(category))
                 )}
-              </List>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
+              </div>
+            </div>
+            
+            <div className="md:col-span-3">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h3 className="font-medium mb-4">
                   {editingCategory ? 'Edit Category' : 'New Category'}
-                </Typography>
-                <Box sx={{ mt: 2 }}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    sx={{ mb: 2 }}
-                  />
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="category-name">Name</Label>
+                    <Input
+                      id="category-name"
+                      value={formData.name}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Category name"
+                    />
+                  </div>
+                  
                   {!type && (
-                    <FormControl fullWidth sx={{ mb: 2 }}>
-                      <InputLabel>Type</InputLabel>
-                      <Select
-                        value={formData.type}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            type: e.target.value as 'income' | 'expense',
-                          })
-                        }
-                        label="Type"
+                    <div className="space-y-2">
+                      <Label htmlFor="category-type">Type</Label>
+                      <Select 
+                        value={formData.type} 
+                        onValueChange={(value: 'income' | 'expense') => setFormData({ ...formData, type: value })}
                       >
-                        <MenuItem value="income">Income</MenuItem>
-                        <MenuItem value="expense">Expense</MenuItem>
+                        <SelectTrigger id="category-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="income">Income</SelectItem>
+                          <SelectItem value="expense">Expense</SelectItem>
+                        </SelectContent>
                       </Select>
-                    </FormControl>
+                    </div>
                   )}
-                  <TextField
-                    fullWidth
-                    label="Color"
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    sx={{ mb: 2 }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <CircleIcon sx={{ color: formData.color }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Parent Category (Optional)</InputLabel>
-                    <Select
-                      value={formData.parent_id}
-                      onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
-                      label="Parent Category (Optional)"
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="category-color">Color</Label>
+                    <div className="flex items-center gap-2">
+                      <CircleIcon className="h-4 w-4" style={{ color: formData.color }} />
+                      <Input
+                        id="category-color"
+                        type="color"
+                        value={formData.color}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, color: e.target.value })}
+                        className="w-20 h-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="parent-category">Parent Category (Optional)</Label>
+                    <Select 
+                      value={formData.parent_id} 
+                      onValueChange={(value) => setFormData({ ...formData, parent_id: value === 'none' ? '' : value })}
                     >
-                      <MenuItem value="">None</MenuItem>
-                      {filteredCategories
-                        .filter((cat) => cat.id !== editingCategory?.id)
-                        .map((category) => (
-                          <MenuItem key={category.id} value={category.id}>
-                            {category.name}
-                          </MenuItem>
-                        ))}
+                      <SelectTrigger id="parent-category">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {filteredCategories
+                          .filter((cat) => cat.id !== editingCategory?.id)
+                          .map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
                     </Select>
-                  </FormControl>
-                  <Box sx={{ mt: 3, display: 'flex', gap: 1 }}>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
                     <Button
-                      variant="contained"
-                      fullWidth
                       onClick={handleSaveCategory}
                       disabled={!formData.name}
+                      className="flex-1"
                     >
                       {editingCategory ? 'Update' : 'Create'}
                     </Button>
                     {editingCategory && (
-                      <Button variant="outlined" onClick={handleAddCategory}>
+                      <Button variant="outline" onClick={handleAddCategory}>
                         Cancel
                       </Button>
                     )}
-                  </Box>
-                </Box>
-              </Box>
-            </Grid>
-          </Grid>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Close</Button>
-        </DialogActions>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
-        <DialogContent>
-          <Typography>
+      <Dialog open={!!deleteConfirmId} onOpenChange={(isOpen) => !isOpen && setDeleteConfirmId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+          </DialogHeader>
+          
+          <p className="py-4">
             Are you sure you want to delete this category? Transactions using this category will
             have their category removed.
-          </Typography>
+          </p>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteCategory}>
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
-          <Button onClick={handleDeleteCategory} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
       </Dialog>
     </>
   );

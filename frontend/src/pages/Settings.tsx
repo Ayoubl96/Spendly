@@ -1,16 +1,15 @@
 import React from 'react';
-import { Box, Typography } from '@mui/material';
 
 const Settings: React.FC = () => {
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">
         Settings
-      </Typography>
-      <Typography color="text.secondary">
+      </h1>
+      <p className="text-muted-foreground">
         User settings and preferences coming soon...
-      </Typography>
-    </Box>
+      </p>
+    </div>
   );
 };
 

@@ -1,54 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter 
+} from '../components/ui/dialog';
+import { useToast } from '../hooks/use-toast';
 import {
-  Box,
-  Typography,
-  Button,
-  Card,
-  CardContent,
-  Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Paper,
-  IconButton,
-  Chip,
-  TextField,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  FormControlLabel,
-  Switch,
-  InputAdornment,
-  Alert,
-  Snackbar,
-  Tooltip,
-  CircularProgress,
-  Stack,
-} from '@mui/material';
-import {
-  Add as AddIcon,
+  Plus as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  FileUpload as FileUploadIcon,
+  Trash2 as DeleteIcon,
+  Upload as FileUploadIcon,
   Download as DownloadIcon,
-  FilterList as FilterIcon,
+  Filter as FilterIcon,
   Search as SearchIcon,
-  AttachMoney as MoneyIcon,
+  DollarSign as MoneyIcon,
   TrendingUp as IncomeIcon,
   TrendingDown as ExpenseIcon,
-} from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+  Loader2,
+} from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import {
@@ -67,7 +45,7 @@ import { API_URL } from '../config/constants';
 
 const Transactions: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { transactions, summary, isLoading, error, totalCount } = useAppSelector(
+  const { transactions, summary, isLoading, totalCount } = useAppSelector(
     (state) => state.transactions
   );
   const { categories } = useAppSelector((state) => state.categories);
@@ -80,8 +58,8 @@ const Transactions: React.FC = () => {
   const [filters, setFilters] = useState({
     startDate: startOfMonth(new Date()),
     endDate: endOfMonth(new Date()),
-    categoryId: '',
-    transactionType: '',
+    categoryId: 'all',
+    transactionType: 'all',
     search: '',
   });
 
@@ -111,42 +89,37 @@ const Transactions: React.FC = () => {
   // Import state
   const [importFile, setImportFile] = useState<File | null>(null);
 
-  // Notification state
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'info';
-  }>({ open: false, message: '', severity: 'success' });
+  const { toast } = useToast();
 
-  // Fetch data on component mount and filter changes
-  useEffect(() => {
-    dispatch(fetchCategories());
-    loadTransactions();
-    loadSummary();
-  }, [filters, page, rowsPerPage]);
-
-  const loadTransactions = () => {
+  const loadTransactions = useCallback(() => {
     dispatch(
       fetchTransactions({
         skip: page * rowsPerPage,
         limit: rowsPerPage,
         start_date: format(filters.startDate, 'yyyy-MM-dd'),
         end_date: format(filters.endDate, 'yyyy-MM-dd'),
-        category_id: filters.categoryId || undefined,
-        transaction_type: filters.transactionType as 'income' | 'expense' || undefined,
+        category_id: filters.categoryId === 'all' ? undefined : filters.categoryId,
+        transaction_type: filters.transactionType === 'all' ? undefined : filters.transactionType as 'income' | 'expense',
         search: filters.search || undefined,
       })
     );
-  };
+  }, [dispatch, page, rowsPerPage, filters]);
 
-  const loadSummary = () => {
+  const loadSummary = useCallback(() => {
     dispatch(
       fetchTransactionSummary({
         start_date: format(filters.startDate, 'yyyy-MM-dd'),
         end_date: format(filters.endDate, 'yyyy-MM-dd'),
       })
     );
-  };
+  }, [dispatch, filters]);
+
+  // Fetch data on component mount and filter changes
+  useEffect(() => {
+    dispatch(fetchCategories());
+    loadTransactions();
+    loadSummary();
+  }, [dispatch, loadTransactions, loadSummary]);
 
   const handleAddTransaction = () => {
     setEditingTransaction(null);
@@ -156,7 +129,7 @@ const Transactions: React.FC = () => {
       date: new Date(),
       description: '',
       type: 'expense',
-      category_id: '',
+      category_id: 'none',
       recurring: false,
       recurring_frequency: '',
       tags: '',
@@ -172,7 +145,7 @@ const Transactions: React.FC = () => {
       date: parseISO(transaction.date),
       description: transaction.description || '',
       type: transaction.type,
-      category_id: transaction.category_id || '',
+      category_id: transaction.category_id || 'none',
       recurring: transaction.recurring,
       recurring_frequency: transaction.recurring_frequency || '',
       tags: transaction.tags || '',
@@ -188,7 +161,7 @@ const Transactions: React.FC = () => {
         date: format(formData.date, 'yyyy-MM-dd'),
         description: formData.description || undefined,
         type: formData.type,
-        category_id: formData.category_id || undefined,
+        category_id: formData.category_id === 'none' ? undefined : formData.category_id,
         recurring: formData.recurring,
         recurring_frequency: formData.recurring ? formData.recurring_frequency : undefined,
         tags: formData.tags || undefined,
@@ -240,7 +213,10 @@ const Transactions: React.FC = () => {
   };
 
   const showNotification = (message: string, severity: 'success' | 'error' | 'info') => {
-    setNotification({ open: true, message, severity });
+    toast({
+      title: message,
+      variant: severity === 'error' ? 'destructive' : 'default',
+    });
   };
 
   const getFilteredCategories = () => {
@@ -255,117 +231,101 @@ const Transactions: React.FC = () => {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4">Transactions</Typography>
-          <Box>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-3xl font-bold">Transactions</h1>
+          <div className="flex flex-wrap gap-2">
             <Button
-              variant={showAnalytics ? 'contained' : 'outlined'}
+              variant={showAnalytics ? 'default' : 'outline'}
               onClick={() => setShowAnalytics(!showAnalytics)}
-              sx={{ mr: 2 }}
             >
               {showAnalytics ? 'Show List' : 'Show Analytics'}
             </Button>
             <Button
-              variant="outlined"
-              startIcon={<FilterIcon />}
+              variant="outline"
               onClick={() => setOpenCategoryDialog(true)}
-              sx={{ mr: 2 }}
             >
+              <FilterIcon className="mr-2 h-4 w-4" />
               Categories
             </Button>
             <Button
-              variant="outlined"
-              startIcon={<FileUploadIcon />}
+              variant="outline"
               onClick={() => setOpenImportDialog(true)}
-              sx={{ mr: 2 }}
             >
+              <FileUploadIcon className="mr-2 h-4 w-4" />
               Import
             </Button>
             <Button
-              variant="contained"
-              startIcon={<AddIcon />}
               onClick={handleAddTransaction}
             >
+              <AddIcon className="mr-2 h-4 w-4" />
               Add Transaction
             </Button>
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* Summary Cards */}
         {summary && !showAnalytics && (
-          <Grid container spacing={3} mb={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Total Income
-                      </Typography>
-                      <Typography variant="h5" color="success.main">
-                        {formatCurrency(summary.total_income)}
-                      </Typography>
-                    </Box>
-                    <IncomeIcon color="success" fontSize="large" />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Total Expenses
-                      </Typography>
-                      <Typography variant="h5" color="error.main">
-                        {formatCurrency(summary.total_expenses)}
-                      </Typography>
-                    </Box>
-                    <ExpenseIcon color="error" fontSize="large" />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Net Amount
-                      </Typography>
-                      <Typography
-                        variant="h5"
-                        color={summary.net_amount >= 0 ? 'success.main' : 'error.main'}
-                      >
-                        {formatCurrency(summary.net_amount)}
-                      </Typography>
-                    </Box>
-                    <MoneyIcon fontSize="large" />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Box display="flex" alignItems="center" justifyContent="space-between">
-                    <Box>
-                      <Typography color="textSecondary" gutterBottom>
-                        Transactions
-                      </Typography>
-                      <Typography variant="h5">{summary.transaction_count}</Typography>
-                    </Box>
-                    <FilterIcon fontSize="large" />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Total Income
+                    </p>
+                    <h3 className="text-2xl font-bold text-green-600">
+                      {formatCurrency(summary.total_income)}
+                    </h3>
+                  </div>
+                  <IncomeIcon className="h-8 w-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Total Expenses
+                    </p>
+                    <h3 className="text-2xl font-bold text-red-600">
+                      {formatCurrency(summary.total_expenses)}
+                    </h3>
+                  </div>
+                  <ExpenseIcon className="h-8 w-8 text-red-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Net Amount
+                    </p>
+                    <h3 className={`text-2xl font-bold ${summary.net_amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(summary.net_amount)}
+                    </h3>
+                  </div>
+                  <MoneyIcon className="h-8 w-8 text-blue-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Transactions
+                    </p>
+                    <h3 className="text-2xl font-bold">{summary.transaction_count}</h3>
+                  </div>
+                  <FilterIcon className="h-8 w-8 text-gray-600" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Analytics View */}
@@ -375,73 +335,95 @@ const Transactions: React.FC = () => {
 
         {/* Filters - only show in list view */}
         {!showAnalytics && (
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} sm={6} md={2}>
-                  <DatePicker
-                    label="Start Date"
-                    value={filters.startDate}
-                    onChange={(date) => date && setFilters({ ...filters, startDate: date })}
-                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <DatePicker
-                    label="End Date"
-                    value={filters.endDate}
-                    onChange={(date) => date && setFilters({ ...filters, endDate: date })}
-                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Category</InputLabel>
-                    <Select
-                      value={filters.categoryId}
-                      onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}
-                      label="Category"
-                    >
-                      <MenuItem value="">All Categories</MenuItem>
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="start-date">Start Date</Label>
+                  <div className="relative">
+                    <Input
+                      id="start-date"
+                      type="text"
+                      value={filters.startDate ? format(filters.startDate, 'yyyy-MM-dd') : ''}
+                      readOnly
+                      className="pr-8"
+                    />
+                    <DatePicker
+                      selected={filters.startDate}
+                      onChange={(date: Date | null) => date && setFilters({ ...filters, startDate: date })}
+                      customInput={<span className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer">📅</span>}
+                      dateFormat="yyyy-MM-dd"
+                      placeholderText="Select start date"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="end-date">End Date</Label>
+                  <div className="relative">
+                    <Input
+                      id="end-date"
+                      type="text"
+                      value={filters.endDate ? format(filters.endDate, 'yyyy-MM-dd') : ''}
+                      readOnly
+                      className="pr-8"
+                    />
+                    <DatePicker
+                      selected={filters.endDate}
+                      onChange={(date: Date | null) => date && setFilters({ ...filters, endDate: date })}
+                      customInput={<span className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer">📅</span>}
+                      dateFormat="yyyy-MM-dd"
+                      placeholderText="Select end date"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="category-filter">Category</Label>
+                  <Select value={filters.categoryId} onValueChange={(value) => setFilters({ ...filters, categoryId: value })}>
+                    <SelectTrigger id="category-filter">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((category) => (
-                        <MenuItem key={category.id} value={category.id}>
+                        <SelectItem key={category.id} value={category.id}>
                           {category.name}
-                        </MenuItem>
+                        </SelectItem>
                       ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6} md={2}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Type</InputLabel>
-                    <Select
-                      value={filters.transactionType}
-                      onChange={(e) => setFilters({ ...filters, transactionType: e.target.value })}
-                      label="Type"
-                    >
-                      <MenuItem value="">All Types</MenuItem>
-                      <MenuItem value="income">Income</MenuItem>
-                      <MenuItem value="expense">Expense</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={12} md={4}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Search"
-                    value={filters.search}
-                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-              </Grid>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="type-filter">Type</Label>
+                  <Select value={filters.transactionType} onValueChange={(value) => setFilters({ ...filters, transactionType: value })}>
+                    <SelectTrigger id="type-filter">
+                      <SelectValue placeholder="All Types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="income">Income</SelectItem>
+                      <SelectItem value="expense">Expense</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2 lg:col-span-2">
+                  <Label htmlFor="search">Search</Label>
+                  <div className="relative">
+                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="search"
+                      type="text"
+                      placeholder="Search transactions..."
+                      value={filters.search}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFilters({ ...filters, search: e.target.value })}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -449,294 +431,365 @@ const Transactions: React.FC = () => {
         {/* Transactions Table - only show in list view */}
         {!showAnalytics && (
           <Card>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Type</TableCell>
-                    <TableCell align="right">Amount</TableCell>
-                    <TableCell>Tags</TableCell>
-                    <TableCell align="center">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <CircularProgress />
-                      </TableCell>
-                    </TableRow>
-                  ) : transactions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">
-                        <Typography color="textSecondary">No transactions found</Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{format(parseISO(transaction.date), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>
-                          <Box>
-                            <Typography variant="body2">{transaction.description || '-'}</Typography>
-                            {transaction.recurring && (
-                              <Chip
-                                size="small"
-                                label={`Recurring ${transaction.recurring_frequency}`}
-                                color="info"
-                                sx={{ mt: 0.5 }}
-                              />
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left p-4 font-medium">Date</th>
+                      <th className="text-left p-4 font-medium">Description</th>
+                      <th className="text-left p-4 font-medium">Category</th>
+                      <th className="text-left p-4 font-medium">Type</th>
+                      <th className="text-right p-4 font-medium">Amount</th>
+                      <th className="text-left p-4 font-medium">Tags</th>
+                      <th className="text-center p-4 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        </td>
+                      </tr>
+                    ) : transactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                          No transactions found
+                        </td>
+                      </tr>
+                    ) : (
+                      transactions.map((transaction) => (
+                        <tr key={transaction.id} className="border-b hover:bg-muted/25">
+                          <td className="p-4">{format(parseISO(transaction.date), 'MMM dd, yyyy')}</td>
+                          <td className="p-4">
+                            <div>
+                              <p className="text-sm">{transaction.description || '-'}</p>
+                              {transaction.recurring && (
+                                <span className="inline-flex items-center px-2 py-1 mt-1 text-xs bg-blue-100 text-blue-800 rounded-md">
+                                  Recurring {transaction.recurring_frequency}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            {transaction.category ? (
+                              <span
+                                className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md text-white"
+                                style={{ backgroundColor: transaction.category.color }}
+                              >
+                                {transaction.category.name}
+                              </span>
+                            ) : (
+                              '-'
                             )}
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          {transaction.category ? (
-                            <Chip
-                              label={transaction.category.name}
-                              size="small"
-                              style={{
-                                backgroundColor: transaction.category.color,
-                                color: '#fff',
-                              }}
-                            />
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={transaction.type}
-                            size="small"
-                            color={transaction.type === 'income' ? 'success' : 'error'}
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography
-                            variant="body2"
-                            color={transaction.type === 'income' ? 'success.main' : 'error.main'}
-                            fontWeight="medium"
-                          >
-                            {transaction.type === 'expense' ? '-' : '+'}
-                            {formatCurrency(transaction.amount)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          {transaction.tags ? (
-                            <Stack direction="row" spacing={0.5}>
-                              {transaction.tags.split(',').map((tag, index) => (
-                                <Chip key={index} label={tag.trim()} size="small" variant="outlined" />
-                              ))}
-                            </Stack>
-                          ) : (
-                            '-'
-                          )}
-                        </TableCell>
-                        <TableCell align="center">
-                          <Tooltip title="Edit">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEditTransaction(transaction)}
+                          </td>
+                          <td className="p-4">
+                            <span
+                              className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${
+                                transaction.type === 'income'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}
                             >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Delete">
-                            <IconButton
-                              size="small"
-                              onClick={() => setDeleteConfirmId(transaction.id)}
-                              color="error"
+                              {transaction.type}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <span
+                              className={`text-sm font-medium ${
+                                transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                              }`}
                             >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              <TablePagination
-                rowsPerPageOptions={[10, 25, 50, 100]}
-                component="div"
-                count={totalCount}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={(_, newPage) => setPage(newPage)}
-                onRowsPerPageChange={(e) => {
-                  setRowsPerPage(parseInt(e.target.value, 10));
-                  setPage(0);
-                }}
-              />
-            </TableContainer>
+                              {transaction.type === 'expense' ? '-' : '+'}
+                              {formatCurrency(transaction.amount)}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            {transaction.tags ? (
+                              <div className="flex flex-wrap gap-1">
+                                {transaction.tags.split(',').map((tag, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-800 border rounded-md"
+                                  >
+                                    {tag.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          <td className="p-4 text-center">
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleEditTransaction(transaction)}
+                                className="h-8 w-8 p-0"
+                                title="Edit"
+                              >
+                                <EditIcon className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setDeleteConfirmId(transaction.id)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Delete"
+                              >
+                                <DeleteIcon className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              <div className="flex items-center justify-between p-4 border-t">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Rows per page:</span>
+                  <Select value={rowsPerPage.toString()} onValueChange={(value) => {
+                    setRowsPerPage(parseInt(value, 10));
+                    setPage(0);
+                  }}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, totalCount)} of {totalCount}
+                  </span>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 0}
+                      className="h-8 w-8 p-0"
+                    >
+                      ‹
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPage(page + 1)}
+                      disabled={page >= Math.ceil(totalCount / rowsPerPage) - 1}
+                      className="h-8 w-8 p-0"
+                    >
+                      ›
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
         )}
 
         {/* Add/Edit Transaction Dialog */}
-        <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>
-            {editingTransaction ? 'Edit Transaction' : 'Add New Transaction'}
-          </DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Type</InputLabel>
-                  <Select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'income' | 'expense', category_id: '' })}
-                    label="Type"
-                  >
-                    <MenuItem value="income">Income</MenuItem>
-                    <MenuItem value="expense">Expense</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Amount"
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="Date"
-                  value={formData.date}
-                  onChange={(date) => date && setFormData({ ...formData, date })}
-                  slotProps={{ textField: { fullWidth: true } }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
-                  <Select
-                    value={formData.category_id}
-                    onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                    label="Category"
-                  >
-                    <MenuItem value="">No Category</MenuItem>
+        <Dialog open={openAddDialog} onOpenChange={setOpenAddDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingTransaction ? 'Edit Transaction' : 'Add New Transaction'}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="transaction-type">Type</Label>
+                <Select value={formData.type} onValueChange={(value: 'income' | 'expense') => setFormData({ ...formData, type: value, category_id: 'none' })}>
+                  <SelectTrigger id="transaction-type">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="transaction-amount">Amount</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="transaction-amount"
+                    type="number"
+                    value={formData.amount}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, amount: e.target.value })}
+                    className="pl-8"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="transaction-date">Date</Label>
+                <div className="relative">
+                  <Input
+                    id="transaction-date"
+                    type="text"
+                    value={formData.date ? format(formData.date, 'yyyy-MM-dd') : ''}
+                    readOnly
+                    className="pr-8"
+                  />
+                  <DatePicker
+                    selected={formData.date}
+                    onChange={(date: Date | null) => date && setFormData({ ...formData, date })}
+                    customInput={<span className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer">📅</span>}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="Select date"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="transaction-category">Category</Label>
+                <Select value={formData.category_id} onValueChange={(value) => setFormData({ ...formData, category_id: value })}>
+                  <SelectTrigger id="transaction-category">
+                    <SelectValue placeholder="No Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Category</SelectItem>
                     {getFilteredCategories().map((category) => (
-                      <MenuItem key={category.id} value={category.id}>
+                      <SelectItem key={category.id} value={category.id}>
                         {category.name}
-                      </MenuItem>
+                      </SelectItem>
                     ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Description"
-                  multiline
-                  rows={2}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="transaction-description">Description</Label>
+                <textarea
+                  id="transaction-description"
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Transaction description..."
                 />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Tags (comma-separated)"
+              </div>
+              
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="transaction-tags">Tags (comma-separated)</Label>
+                <Input
+                  id="transaction-tags"
+                  type="text"
                   value={formData.tags}
-                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, tags: e.target.value })}
                   placeholder="e.g., groceries, monthly, utilities"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.recurring}
-                      onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
-                    />
-                  }
-                  label="Recurring Transaction"
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="recurring-checkbox"
+                  checked={formData.recurring}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, recurring: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
                 />
-              </Grid>
+                <Label htmlFor="recurring-checkbox">Recurring Transaction</Label>
+              </div>
+              
               {formData.recurring && (
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Frequency</InputLabel>
-                    <Select
-                      value={formData.recurring_frequency}
-                      onChange={(e) => setFormData({ ...formData, recurring_frequency: e.target.value })}
-                      label="Frequency"
-                    >
-                      <MenuItem value="daily">Daily</MenuItem>
-                      <MenuItem value="weekly">Weekly</MenuItem>
-                      <MenuItem value="monthly">Monthly</MenuItem>
-                      <MenuItem value="yearly">Yearly</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
+                <div className="space-y-2">
+                  <Label htmlFor="recurring-frequency">Frequency</Label>
+                  <Select value={formData.recurring_frequency} onValueChange={(value) => setFormData({ ...formData, recurring_frequency: value })}>
+                    <SelectTrigger id="recurring-frequency">
+                      <SelectValue placeholder="Select frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
-            </Grid>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpenAddDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveTransaction} disabled={!formData.amount || !formData.type}>
+                {editingTransaction ? 'Update' : 'Create'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenAddDialog(false)}>Cancel</Button>
-            <Button onClick={handleSaveTransaction} variant="contained" disabled={!formData.amount || !formData.type}>
-              {editingTransaction ? 'Update' : 'Create'}
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* Import Dialog */}
-        <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)} maxWidth="sm" fullWidth>
-          <DialogTitle>Import Transactions</DialogTitle>
-          <DialogContent>
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="body2" color="textSecondary" gutterBottom>
+        <Dialog open={openImportDialog} onOpenChange={setOpenImportDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Import Transactions</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
                 Upload a CSV or Excel file with your transactions. The file should contain columns for:
                 date, amount, description, type (income/expense), and optionally category.
-              </Typography>
-              <Box sx={{ mt: 2, mb: 2 }}>
-                <Button
-                  variant="text"
-                  startIcon={<DownloadIcon />}
-                  onClick={() => {
-                    window.open(`${API_URL}/transactions/import/template`, '_blank');
-                  }}
-                  color="primary"
-                >
-                  Download Sample Template
-                </Button>
-              </Box>
+              </p>
+              
               <Button
-                variant="outlined"
-                component="label"
-                startIcon={<FileUploadIcon />}
-                fullWidth
-                sx={{ mt: 2 }}
+                variant="ghost"
+                onClick={() => {
+                  window.open(`${API_URL}/transactions/import/template`, '_blank');
+                }}
+                className="w-full justify-start"
               >
-                Select File
-                <input
-                  type="file"
-                  hidden
-                  accept=".csv,.xlsx,.xls"
-                  onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                />
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Download Sample Template
               </Button>
+              
+              <Button variant="outline" className="w-full justify-start" asChild>
+                <label>
+                  <FileUploadIcon className="mr-2 h-4 w-4" />
+                  Select File
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                  />
+                </label>
+              </Button>
+              
               {importFile && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
+                <p className="text-sm text-muted-foreground">
                   Selected: {importFile.name}
-                </Typography>
+                </p>
               )}
-            </Box>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpenImportDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleImportFile} disabled={!importFile}>
+                Import
+              </Button>
+            </DialogFooter>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenImportDialog(false)}>Cancel</Button>
-            <Button onClick={handleImportFile} variant="contained" disabled={!importFile}>
-              Import
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* Category Manager Dialog */}
@@ -746,36 +799,27 @@ const Transactions: React.FC = () => {
         />
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
-          <DialogTitle>Confirm Delete</DialogTitle>
-          <DialogContent>
-            <Typography>Are you sure you want to delete this transaction?</Typography>
+        <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+            </DialogHeader>
+            
+            <p className="py-4">Are you sure you want to delete this transaction?</p>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteTransaction}>
+                Delete
+              </Button>
+            </DialogFooter>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
-            <Button onClick={handleDeleteTransaction} color="error" variant="contained">
-              Delete
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* Notification Snackbar */}
-        <Snackbar
-          open={notification.open}
-          autoHideDuration={6000}
-          onClose={() => setNotification({ ...notification, open: false })}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Alert
-            onClose={() => setNotification({ ...notification, open: false })}
-            severity={notification.severity}
-            sx={{ width: '100%' }}
-          >
-            {notification.message}
-          </Alert>
-        </Snackbar>
-      </Box>
-    </LocalizationProvider>
+      </div>
   );
 };
 
