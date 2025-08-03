@@ -1,1 +1,0 @@
-# Spendly Backend Application
