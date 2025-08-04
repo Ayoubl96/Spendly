@@ -11,10 +11,10 @@ export interface MonthlyBudgetPlan {
   month: number // 1-12
   year: number
   currency: string
-  totalAmount: number
-  categoryBudgets: CategoryBudgetAllocation[]
-  createdAt?: string
-  updatedAt?: string
+  total_amount: number // Backend sends snake_case
+  category_budgets: CategoryBudgetAllocation[] // Backend sends snake_case
+  created_at?: string // Backend sends snake_case
+  updated_at?: string // Backend sends snake_case
 }
 
 export interface CategoryBudgetAllocation {

@@ -77,8 +77,8 @@ export function MonthlyBudgetPlanForm({
         // Build category allocations from the detailed plan data
         const categoryAllocations: Record<string, { amount: string; alertThreshold?: string; isActive?: boolean }> = {}
         
-        if (currentPlan.categoryBudgets) {
-          currentPlan.categoryBudgets.forEach((allocation) => {
+        if (currentPlan.category_budgets) {
+          currentPlan.category_budgets.forEach((allocation) => {
             categoryAllocations[allocation.category_id] = {
               amount: allocation.budget_amount.toString(),
               alertThreshold: allocation.alert_threshold.toString(),

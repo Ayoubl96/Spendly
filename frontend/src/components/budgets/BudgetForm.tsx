@@ -104,6 +104,8 @@ export function BudgetForm({
   
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+
+
   // Reset form when dialog opens/closes or when editing budget changes
   useEffect(() => {
     console.log('BudgetForm useEffect triggered:', { isOpen, editingBudget })
@@ -123,8 +125,14 @@ export function BudgetForm({
           isActive: editingBudget.is_active
         })
         const mappedFormData = mapBudgetToFormData(editingBudget)
+        console.log('🎯 About to set form data:', mappedFormData)
         setFormData(mappedFormData)
-        console.log('BudgetForm: Form data set to:', mappedFormData)
+        console.log('✅ Form data set successfully')
+        
+        // Verify state change with a small delay
+        setTimeout(() => {
+          console.log('🔍 Verification: formData should now be set')
+        }, 50)
       } else {
         setFormData({
           name: '',
@@ -237,7 +245,7 @@ export function BudgetForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <Card className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <Card key={editingBudget?.id || 'new'} className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>{editingBudget ? 'Edit Budget' : 'Create New Budget'}</CardTitle>
