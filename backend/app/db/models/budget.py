@@ -85,9 +85,9 @@ class Budget(Base):
     def get_spent_amount(self, db) -> Decimal:
         """Get total amount spent against this budget"""
         from app.db.models.expense import Expense
-        from sqlalchemy import func
+        from sqlalchemy import func, Numeric
         
-        query = db.query(func.sum(func.cast(Expense.amount_in_base_currency, db.Numeric))).filter(
+        query = db.query(func.sum(func.cast(Expense.amount_in_base_currency, Numeric))).filter(
             Expense.user_id == self.user_id,
             Expense.expense_date >= self.start_date
         )

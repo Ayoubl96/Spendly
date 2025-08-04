@@ -37,13 +37,18 @@ services:
       - ./backend:/app
       - ./data/uploads:/app/uploads
       - ./data/logs:/app/logs
+    env_file:
+      - .env
     environment:
       - ENVIRONMENT=development
       - LOG_LEVEL=debug
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-    env_file:
-      - .env
+      # Currency API Configuration - FastFOREX (override .env values)
+      - CURRENCY_API_KEY=demo
+      - CURRENCY_API_BASE_URL=https://api.fastforex.io/fetch-one
+      - CURRENCY_API_TIMEOUT=10
+      - CURRENCY_CACHE_DURATION_HOURS=1
     depends_on:
       - database
       - redis

@@ -6,6 +6,7 @@ from typing import List, Optional, Any, Dict
 from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
+from uuid import UUID
 
 from app.crud.base import CRUDBase
 from app.db.models.budget import Budget
@@ -36,7 +37,9 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             query = query.filter(Budget.period_type == period_type)
         
         if category_id:
-            query = query.filter(Budget.category_id == category_id)
+            # Convert category_id to UUID for filtering if it's a string
+            filter_category_id = UUID(category_id) if isinstance(category_id, str) else category_id
+            query = query.filter(Budget.category_id == filter_category_id)
         
         return query.order_by(Budget.start_date.desc()).offset(skip).limit(limit).all()
     
@@ -82,6 +85,11 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
         user_id: Any
     ) -> Budget:
         """Create a new budget for a user"""
+        # Convert category_id from string to UUID if provided
+        category_id = None
+        if obj_in.category_id:
+            category_id = UUID(obj_in.category_id) if isinstance(obj_in.category_id, str) else obj_in.category_id
+        
         db_obj = Budget(
             name=obj_in.name,
             amount=str(obj_in.amount),
@@ -90,9 +98,27 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             start_date=obj_in.start_date,
             end_date=obj_in.end_date,
             user_id=user_id,
-            category_id=obj_in.category_id,
-            alert_threshold=str(obj_in.alert_threshold)
+            category_id=category_id,
+            alert_threshold=str(obj_in.alert_threshold),
+            is_active=obj_in.is_active
         )
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+    
+    def update(self, db: Session, *, db_obj: Budget, obj_in: BudgetUpdate) -> Budget:
+        """Update budget with UUID conversion for category_id"""
+        update_data = obj_in.model_dump(exclude_unset=True)
+        
+        # Convert category_id from string to UUID if provided
+        if 'category_id' in update_data and update_data['category_id']:
+            if isinstance(update_data['category_id'], str):
+                update_data['category_id'] = UUID(update_data['category_id'])
+        
+        for field, value in update_data.items():
+            setattr(db_obj, field, value)
+        
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
@@ -179,11 +205,14 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
         category_id: Any
     ) -> List[Budget]:
         """Get budgets for a specific category"""
+        # Convert category_id to UUID if it's a string
+        filter_category_id = UUID(category_id) if isinstance(category_id, str) else category_id
+        
         return (
             db.query(Budget)
             .filter(
                 Budget.user_id == user_id,
-                Budget.category_id == category_id,
+                Budget.category_id == filter_category_id,
                 Budget.is_active == True
             )
             .order_by(Budget.start_date.desc())

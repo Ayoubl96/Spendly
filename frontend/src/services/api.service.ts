@@ -12,8 +12,11 @@ import {
   Category,
   CategoryTree,
   Currency,
+  ExchangeRateResponse,
+  CurrencyConversionResponse,
   Budget,
   BudgetSummary,
+  BudgetPerformance,
   ExpenseSummary,
 } from '../types/api.types'
 
@@ -142,6 +145,25 @@ class ApiService {
   }
 
   // Expense endpoints
+  // Helper function to convert snake_case fields to camelCase
+  private mapExpenseFields(expense: any): Expense {
+    return {
+      ...expense,
+      amountInBaseCurrency: expense.amount_in_base_currency,
+      exchangeRate: expense.exchange_rate,
+      expenseDate: expense.expense_date,
+      userId: expense.user_id,
+      categoryId: expense.category_id,
+      subcategoryId: expense.subcategory_id,
+      paymentMethod: expense.payment_method,
+      receiptUrl: expense.receipt_url,
+      isShared: expense.is_shared,
+      sharedWith: expense.shared_with,
+      createdAt: expense.created_at,
+      updatedAt: expense.updated_at
+    }
+  }
+
   async getExpenses(
     filters: ExpenseFilters = {},
     pagination: PaginationParams = {}
@@ -151,6 +173,7 @@ class ApiService {
     if (filters.startDate) params.append('start_date', filters.startDate)
     if (filters.endDate) params.append('end_date', filters.endDate)
     if (filters.categoryId) params.append('category_id', filters.categoryId)
+    if (filters.subcategoryId) params.append('subcategory_id', filters.subcategoryId)
     if (filters.currency) params.append('currency', filters.currency)
     if (filters.search) params.append('search', filters.search)
     if (pagination.page) params.append('page', pagination.page.toString())
@@ -159,21 +182,25 @@ class ApiService {
     if (pagination.sortOrder) params.append('sort_order', pagination.sortOrder)
 
     const queryString = params.toString()
-    return this.request<Expense[]>(`/expenses${queryString ? `?${queryString}` : ''}`)
+    const rawExpenses = await this.request<any[]>(`/expenses/${queryString ? `?${queryString}` : ''}`)
+    return rawExpenses.map(expense => this.mapExpenseFields(expense))
   }
 
   async getExpense(id: string): Promise<Expense> {
-    return this.request<Expense>(`/expenses/${id}`)
+    const rawExpense = await this.request<any>(`/expenses/${id}`)
+    return this.mapExpenseFields(rawExpense)
   }
 
   async createExpense(data: CreateExpenseRequest): Promise<Expense> {
-    return this.request<Expense>('/expenses/', {
+    const rawExpense = await this.request<any>('/expenses/', {
       method: 'POST',
       body: JSON.stringify({
         amount: data.amount,
         currency: data.currency,
         description: data.description,
         expense_date: data.expenseDate,
+        amount_in_base_currency: data.amount_in_base_currency,
+        exchange_rate: data.exchange_rate,
         category_id: data.categoryId,
         subcategory_id: data.subcategoryId,
         payment_method: data.paymentMethod,
@@ -185,13 +212,15 @@ class ApiService {
         tags: data.tags,
       }),
     })
+    return this.mapExpenseFields(rawExpense)
   }
 
   async updateExpense(id: string, data: Partial<CreateExpenseRequest>): Promise<Expense> {
-    return this.request<Expense>(`/expenses/${id}`, {
+    const rawExpense = await this.request<any>(`/expenses/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })
+    return this.mapExpenseFields(rawExpense)
   }
 
   async deleteExpense(id: string): Promise<void> {
@@ -223,9 +252,67 @@ class ApiService {
     })
   }
 
+  async updateCategory(id: string, data: { name?: string; parentId?: string; color?: string; icon?: string; sortOrder?: number }): Promise<Category> {
+    return this.request<Category>(`/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: data.name,
+        parent_id: data.parentId,
+        color: data.color,
+        icon: data.icon,
+        sort_order: data.sortOrder,
+      }),
+    })
+  }
+
+  async deleteCategory(id: string, reassignToCategoryId?: string): Promise<{ message: string; reassigned_expenses: number; reassigned_to?: string }> {
+    const params = new URLSearchParams()
+    if (reassignToCategoryId) {
+      params.append('reassign_to_category_id', reassignToCategoryId)
+    }
+    
+    return this.request<{ message: string; reassigned_expenses: number; reassigned_to?: string }>(
+      `/categories/${id}${params.toString() ? `?${params.toString()}` : ''}`, 
+      {
+        method: 'DELETE',
+      }
+    )
+  }
+
+  async getCategoryStats(id: string): Promise<{ category_id: string; category_name: string; expense_count: number; total_amount: number; subcategory_count: number; can_delete: boolean }> {
+    return this.request<{ category_id: string; category_name: string; expense_count: number; total_amount: number; subcategory_count: number; can_delete: boolean }>(`/categories/${id}/stats`)
+  }
+
+  async reorderCategories(categoryOrders: { id: string; sort_order: number }[]): Promise<{ message: string; updated_count: number }> {
+    return this.request<{ message: string; updated_count: number }>('/categories/reorder', {
+      method: 'POST',
+      body: JSON.stringify(categoryOrders),
+    })
+  }
+
   // Currency endpoints
   async getCurrencies(): Promise<Currency[]> {
     return this.request<Currency[]>('/currencies/')
+  }
+
+  async getExchangeRate(fromCurrency: string, toCurrency: string, forceRefresh = false): Promise<ExchangeRateResponse> {
+    const params = new URLSearchParams()
+    if (forceRefresh) params.append('force_refresh', 'true')
+    
+    return this.request<ExchangeRateResponse>(
+      `/currencies/exchange-rate/${fromCurrency}/${toCurrency}${params.toString() ? `?${params.toString()}` : ''}`
+    )
+  }
+
+  async convertCurrency(amount: number, fromCurrency: string, toCurrency: string): Promise<CurrencyConversionResponse> {
+    return this.request<CurrencyConversionResponse>('/currencies/convert', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount,
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+      }),
+    })
   }
 
   // Budget endpoints
@@ -262,9 +349,80 @@ class ApiService {
     })
   }
 
+  async updateBudget(budgetId: string, data: {
+    name?: string
+    amount?: number
+    currency?: string
+    periodType?: string
+    startDate?: string
+    endDate?: string
+    categoryId?: string
+    alertThreshold?: number
+    isActive?: boolean
+  }): Promise<Budget> {
+    return this.request<Budget>(`/budgets/${budgetId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: data.name,
+        amount: data.amount,
+        currency: data.currency,
+        period_type: data.periodType,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        category_id: data.categoryId,
+        alert_threshold: data.alertThreshold,
+        is_active: data.isActive,
+      }),
+    })
+  }
+
+  async deleteBudget(budgetId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/budgets/${budgetId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async getBudget(budgetId: string): Promise<Budget> {
+    return this.request<Budget>(`/budgets/${budgetId}`)
+  }
+
+  async getBudgetPerformance(budgetId: string): Promise<BudgetPerformance> {
+    return this.request<BudgetPerformance>(`/budgets/${budgetId}/performance`)
+  }
+
   // Analytics endpoints
   async getAnalyticsSummary(year: number): Promise<{ yearly_expenses: any; budget_performance: BudgetSummary }> {
     return this.request(`/analytics/summary?year=${year}`)
+  }
+
+  // Monthly Budget Plan endpoints
+  async createMonthlyBudgetPlan(data: any): Promise<any> {
+    return this.request('/budget-plans/', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async getMonthlyBudgetPlans(year?: number): Promise<any[]> {
+    const params = year ? `?year=${year}` : ''
+    return this.request(`/budget-plans/${params}`)
+  }
+
+  async getMonthlyBudgetPlan(year: number, month: number): Promise<any> {
+    return this.request(`/budget-plans/${year}/${month}`)
+  }
+
+  async updateMonthlyBudgetPlan(year: number, month: number, data: any): Promise<any> {
+    return this.request(`/budget-plans/${year}/${month}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async deleteMonthlyBudgetPlan(year: number, month: number): Promise<void> {
+    return this.request(`/budget-plans/${year}/${month}`, {
+      method: 'DELETE'
+    })
   }
 }
 

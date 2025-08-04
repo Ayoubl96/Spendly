@@ -81,6 +81,41 @@ export interface CategoryTree extends Category {
   totalAmount: number
 }
 
+export interface CreateCategoryRequest {
+  name: string
+  parentId?: string
+  color?: string
+  icon?: string
+  sortOrder?: number
+}
+
+export interface UpdateCategoryRequest {
+  name?: string
+  parentId?: string
+  color?: string
+  icon?: string
+  sortOrder?: number
+}
+
+export interface DeleteCategoryRequest {
+  reassignToCategoryId?: string
+}
+
+export interface CategoryStats {
+  category_id: string
+  category_name: string
+  expense_count: number
+  total_amount: number
+  subcategory_count: number
+  can_delete: boolean
+}
+
+export interface CategoryDeleteResponse {
+  message: string
+  reassigned_expenses: number
+  reassigned_to?: string
+}
+
 // Currency Types
 export interface Currency {
   code: string
@@ -90,6 +125,22 @@ export interface Currency {
   isActive: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface ExchangeRateResponse {
+  from_currency: string
+  to_currency: string
+  rate: number
+  timestamp: string
+}
+
+export interface CurrencyConversionResponse {
+  original_amount: number
+  original_currency: string
+  converted_amount: number
+  target_currency: string
+  exchange_rate: number
+  conversion_date: string
 }
 
 // Expense Types
@@ -148,6 +199,9 @@ export interface CreateExpenseRequest {
   isShared?: boolean
   sharedWith?: string[]
   tags?: string[]
+  // Currency conversion fields
+  amount_in_base_currency?: number
+  exchange_rate?: number
 }
 
 // Budget Types
@@ -161,8 +215,9 @@ export interface Budget {
   endDate?: string
   userId: string
   categoryId?: string
+  subcategoryId?: string
   alertThreshold: number
-  isActive: boolean
+  is_active: boolean
   createdAt: string
   updatedAt: string
 }
@@ -186,13 +241,13 @@ export interface BudgetPerformance {
 }
 
 export interface BudgetSummary {
-  totalBudget: number
-  totalSpent: number
-  totalRemaining: number
-  overallPercentage: number
-  overallStatus: 'on_track' | 'warning' | 'over_budget'
-  budgetCount: number
-  statusCounts: Record<string, number>
+  total_budget: number
+  total_spent: number
+  total_remaining: number
+  overall_percentage: number
+  overall_status: 'on_track' | 'warning' | 'over_budget'
+  budget_count: number
+  status_counts: Record<string, number>
   budgets: BudgetPerformance[]
 }
 
@@ -220,6 +275,7 @@ export interface ExpenseFilters {
   startDate?: string
   endDate?: string
   categoryId?: string
+  subcategoryId?: string
   currency?: string
   paymentMethod?: string
   minAmount?: number

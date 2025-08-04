@@ -15,6 +15,7 @@ from app.api.users import router as users_router
 from app.api.expenses import router as expenses_router
 from app.api.categories import router as categories_router
 from app.api.budgets import router as budgets_router
+from app.api.budget_plans import router as budget_plans_router
 from app.api.currencies import router as currencies_router
 from app.api.analytics import router as analytics_router
 
@@ -73,6 +74,7 @@ app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(expenses_router, prefix="/api/v1/expenses", tags=["Expenses"])
 app.include_router(categories_router, prefix="/api/v1/categories", tags=["Categories"])
 app.include_router(budgets_router, prefix="/api/v1/budgets", tags=["Budgets"])
+app.include_router(budget_plans_router, prefix="/api/v1/budget-plans", tags=["Budget Plans"])
 app.include_router(currencies_router, prefix="/api/v1/currencies", tags=["Currencies"])
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics"])
 

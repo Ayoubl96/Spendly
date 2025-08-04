@@ -2,11 +2,12 @@
 Budget Pydantic schemas
 """
 
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from datetime import date, datetime
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, field_serializer, model_serializer, ConfigDict
 from decimal import Decimal
 from enum import Enum
+from uuid import UUID
 
 
 class PeriodType(str, Enum):
@@ -32,13 +33,20 @@ class BudgetBase(BaseModel):
     period_type: PeriodType
     start_date: date
     end_date: Optional[date] = None
-    category_id: Optional[str] = None
+    category_id: Optional[UUID] = None
     alert_threshold: Decimal = Decimal("80.0")
     is_active: bool = True
+    
+    @field_serializer('category_id', when_used='json')
+    def serialize_category_id(self, value: Optional[UUID]) -> Optional[str]:
+        # Convert UUID to string for JSON serialization
+        return str(value) if value else None
 
 
 class BudgetCreate(BudgetBase):
     """Schema for creating a budget"""
+    # Allow category_id to be provided as string from frontend
+    category_id: Optional[str] = None
     
     @validator("amount")
     def validate_amount(cls, v):
@@ -69,9 +77,16 @@ class BudgetCreate(BudgetBase):
         if v and "start_date" in values and v <= values["start_date"]:
             raise ValueError("End date must be after start date")
         return v
+    
+    @validator("category_id", pre=True)
+    def validate_category_id(cls, v):
+        if v is None or v == "":
+            return None
+        # Accept string input from frontend
+        return v
 
 
-class BudgetUpdate(BudgetBase):
+class BudgetUpdate(BaseModel):
     """Schema for updating a budget"""
     name: Optional[str] = None
     amount: Optional[Decimal] = None
@@ -79,20 +94,34 @@ class BudgetUpdate(BudgetBase):
     period_type: Optional[PeriodType] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    category_id: Optional[str] = None
+    category_id: Optional[str] = None  # Accept string from frontend
     alert_threshold: Optional[Decimal] = None
     is_active: Optional[bool] = None
+    
+    @validator("category_id", pre=True)
+    def validate_category_id(cls, v):
+        if v is None or v == "":
+            return None
+        # Accept string input from frontend
+        return v
 
 
 class BudgetInDBBase(BudgetBase):
     """Base schema for budget in database"""
-    id: str
-    user_id: str
+    id: UUID
+    user_id: UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
-    class Config:
-        from_attributes = True
+    @field_serializer('id', when_used='json')
+    def serialize_id(self, value: UUID) -> str:
+        return str(value)
+    
+    @field_serializer('user_id', when_used='json')
+    def serialize_user_id(self, value: UUID) -> str:
+        return str(value)
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Budget(BudgetInDBBase):
@@ -107,7 +136,7 @@ class BudgetWithCategory(Budget):
 
 class BudgetPerformance(BaseModel):
     """Schema for budget performance metrics"""
-    budget_id: str
+    budget_id: UUID
     name: str
     amount: Decimal
     spent: Decimal
@@ -122,6 +151,12 @@ class BudgetPerformance(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     category: Optional[dict] = None
+    
+    @field_serializer('budget_id', when_used='json')
+    def serialize_budget_id(self, value: UUID) -> str:
+        return str(value)
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BudgetSummary(BaseModel):

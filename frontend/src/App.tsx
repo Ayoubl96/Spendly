@@ -11,6 +11,7 @@ import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { ExpensesPage } from './pages/expenses/ExpensesPage'
+import { CategoriesPage } from './pages/categories/CategoriesPage'
 import { BudgetPage } from './pages/budget/BudgetPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
 
@@ -54,6 +55,7 @@ function App() {
             >
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="expenses" element={<ExpensesPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
               <Route path="budget" element={<BudgetPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route index element={<Navigate to="dashboard" replace />} />

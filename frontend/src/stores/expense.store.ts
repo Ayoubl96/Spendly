@@ -8,7 +8,9 @@ import {
   CategoryTree,
   Currency,
   User,
-  ExpenseSummary 
+  ExpenseSummary,
+  CreateCategoryRequest,
+  UpdateCategoryRequest
 } from '../types/api.types'
 import { apiService } from '../services/api.service'
 
@@ -52,6 +54,14 @@ const initialPagination: PaginationParams = {
   sortOrder: 'desc',
 }
 
+// Helper function to calculate total amount - sum all amountInBaseCurrency values
+const calculateTotalAmount = (expenses: Expense[]): number => {
+  return expenses.reduce((sum, expense) => {
+    const amount = expense.amountInBaseCurrency || 0
+    return sum + (typeof amount === 'string' ? parseFloat(amount) : amount)
+  }, 0)
+}
+
 export const useExpenseStore = create<ExpenseState>((set, get) => ({
   expenses: [],
   categories: [],
@@ -63,10 +73,7 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
   pagination: initialPagination,
   isLoading: false,
   error: null,
-  
-  get totalAmount() {
-    return get().expenses.reduce((sum, expense) => sum + expense.amount, 0)
-  },
+  totalAmount: 0,
 
   fetchExpenses: async () => {
     set({ isLoading: true, error: null })
@@ -74,7 +81,11 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
     try {
       const { filters, pagination } = get()
       const expenses = await apiService.getExpenses(filters, pagination)
-      set({ expenses, isLoading: false })
+      set({ 
+        expenses, 
+        totalAmount: calculateTotalAmount(expenses),
+        isLoading: false 
+      })
     } catch (error) {
       set({
         isLoading: false,
@@ -88,10 +99,14 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
     
     try {
       const newExpense = await apiService.createExpense(data)
-      set((state) => ({
-        expenses: [newExpense, ...state.expenses],
-        isLoading: false,
-      }))
+      set((state) => {
+        const updatedExpenses = [newExpense, ...state.expenses]
+        return {
+          expenses: updatedExpenses,
+          totalAmount: calculateTotalAmount(updatedExpenses),
+          isLoading: false,
+        }
+      })
     } catch (error) {
       set({
         isLoading: false,
@@ -106,13 +121,17 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
     
     try {
       const updatedExpense = await apiService.updateExpense(id, data)
-      set((state) => ({
-        expenses: state.expenses.map((expense) =>
+      set((state) => {
+        const updatedExpenses = state.expenses.map((expense) =>
           expense.id === id ? updatedExpense : expense
-        ),
-        currentExpense: state.currentExpense?.id === id ? updatedExpense : state.currentExpense,
-        isLoading: false,
-      }))
+        )
+        return {
+          expenses: updatedExpenses,
+          totalAmount: calculateTotalAmount(updatedExpenses),
+          currentExpense: state.currentExpense?.id === id ? updatedExpense : state.currentExpense,
+          isLoading: false,
+        }
+      })
     } catch (error) {
       set({
         isLoading: false,
@@ -127,11 +146,15 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
     
     try {
       await apiService.deleteExpense(id)
-      set((state) => ({
-        expenses: state.expenses.filter((expense) => expense.id !== id),
-        currentExpense: state.currentExpense?.id === id ? null : state.currentExpense,
-        isLoading: false,
-      }))
+      set((state) => {
+        const updatedExpenses = state.expenses.filter((expense) => expense.id !== id)
+        return {
+          expenses: updatedExpenses,
+          totalAmount: calculateTotalAmount(updatedExpenses),
+          currentExpense: state.currentExpense?.id === id ? null : state.currentExpense,
+          isLoading: false,
+        }
+      })
     } catch (error) {
       set({
         isLoading: false,
@@ -219,5 +242,67 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
 
   clearError: () => {
     set({ error: null })
+  },
+
+  // Category management methods
+  createCategory: async (data: CreateCategoryRequest) => {
+    try {
+      const newCategory = await apiService.createCategory(data)
+      // Refresh category tree after creating
+      const categoryTree = await apiService.getCategoryTree()
+      set({ categoryTree })
+      return newCategory
+    } catch (error) {
+      console.error('Failed to create category:', error)
+      throw error
+    }
+  },
+
+  updateCategory: async (id: string, data: UpdateCategoryRequest) => {
+    try {
+      const updatedCategory = await apiService.updateCategory(id, data)
+      // Refresh category tree after updating
+      const categoryTree = await apiService.getCategoryTree()
+      set({ categoryTree })
+      return updatedCategory
+    } catch (error) {
+      console.error('Failed to update category:', error)
+      throw error
+    }
+  },
+
+  deleteCategory: async (id: string, reassignToCategoryId?: string) => {
+    try {
+      const result = await apiService.deleteCategory(id, reassignToCategoryId)
+      // Refresh category tree after deleting
+      const categoryTree = await apiService.getCategoryTree()
+      set({ categoryTree })
+      return result
+    } catch (error) {
+      console.error('Failed to delete category:', error)
+      throw error
+    }
+  },
+
+  getCategoryStats: async (id: string) => {
+    try {
+      return await apiService.getCategoryStats(id)
+    } catch (error) {
+      console.error('Failed to get category stats:', error)
+      throw error
+    }
+  },
+
+  reorderCategories: async (categoryOrders: { id: string; sort_order: number }[]) => {
+    try {
+      const result = await apiService.reorderCategories(categoryOrders)
+      // Refresh category tree after reordering
+      const categoryTree = await apiService.getCategoryTree()
+      set({ categoryTree })
+      return result
+    } catch (error) {
+      console.error('Failed to reorder categories:', error)
+      throw error
+    }
   },
 }))

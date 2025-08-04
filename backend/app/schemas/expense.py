@@ -33,6 +33,11 @@ class ExpenseBase(BaseModel):
     is_shared: bool = False
     shared_with: Optional[List[str]] = None
     tags: Optional[List[str]] = None
+    
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v) if v is not None else None
+        }
 
 
 class ExpenseCreate(ExpenseBase):
@@ -116,6 +121,9 @@ class ExpenseInDBBase(ExpenseBase):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            Decimal: lambda v: float(v) if v is not None else None
+        }
 
 
 class Expense(ExpenseInDBBase):

@@ -25,6 +25,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         category_id: Optional[Any] = None,
+        subcategory_id: Optional[Any] = None,
         currency: Optional[str] = None,
         search: Optional[str] = None,
         sort_by: str = "expense_date",
@@ -40,13 +41,25 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             query = query.filter(Expense.expense_date <= end_date)
         
         # Category filtering
-        if category_id:
+        if category_id and subcategory_id:
+            # Both primary category and subcategory specified
+            query = query.filter(
+                and_(
+                    Expense.category_id == category_id,
+                    Expense.subcategory_id == subcategory_id
+                )
+            )
+        elif category_id:
+            # Only primary category specified - include expenses from category and its subcategories
             query = query.filter(
                 or_(
                     Expense.category_id == category_id,
                     Expense.subcategory_id == category_id
                 )
             )
+        elif subcategory_id:
+            # Only subcategory specified
+            query = query.filter(Expense.subcategory_id == subcategory_id)
         
         # Currency filtering
         if currency:
@@ -231,12 +244,30 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         self, 
         db: Session, 
         *, 
+        category_id: Any
+    ) -> List[Expense]:
+        """Get expenses that use this category as primary category"""
+        return db.query(Expense).filter(Expense.category_id == category_id).all()
+    
+    def get_by_subcategory(
+        self, 
+        db: Session, 
+        *, 
+        subcategory_id: Any
+    ) -> List[Expense]:
+        """Get expenses that use this category as subcategory"""
+        return db.query(Expense).filter(Expense.subcategory_id == subcategory_id).all()
+    
+    def get_by_category_or_subcategory(
+        self, 
+        db: Session, 
+        *, 
         user_id: Any, 
         category_id: Any,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None
     ) -> List[Expense]:
-        """Get expenses by category"""
+        """Get expenses by category (as primary or subcategory)"""
         return self.get_by_user(
             db,
             user_id=user_id,

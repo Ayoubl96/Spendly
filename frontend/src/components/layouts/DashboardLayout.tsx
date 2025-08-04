@@ -10,13 +10,15 @@ import {
   Menu, 
   X,
   LogOut,
-  User
+  User,
+  Tags
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Expenses', href: '/expenses', icon: Receipt },
+  { name: 'Categories', href: '/categories', icon: Tags },
   { name: 'Budget', href: '/budget', icon: PiggyBank },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]

@@ -2,20 +2,34 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { ExpenseForm } from '../../components/forms/ExpenseForm'
+import { ExpenseFilters } from '../../components/expenses/ExpenseFilters'
+import { ExpenseCard } from '../../components/expenses/ExpenseCard'
+import { CategorySummary } from '../../components/expenses/CategorySummary'
 import { useExpenseStore } from '../../stores/expense.store'
-import { useAuthStore } from '../../stores/auth.store'
-import { formatCurrency, formatDate } from '../../lib/utils'
-import { PlusCircle, Receipt, Trash2, Edit } from 'lucide-react'
-import { CreateExpenseRequest } from '../../types/api.types'
+// import { useAuthStore } from '../../stores/auth.store' // Not used currently
+import { PlusCircle, Receipt, BarChart3, List, Loader2 } from 'lucide-react'
+import { CreateExpenseRequest, ExpenseFilters as ExpenseFiltersType } from '../../types/api.types'
 
 export function ExpensesPage() {
-  const { user } = useAuthStore()
-  const { expenses, fetchExpenses, createExpense, deleteExpense, isLoading } = useExpenseStore()
+  // const { user } = useAuthStore() // Commented out as not used currently
+  const { 
+    expenses, 
+    categoryTree, 
+    fetchExpenses, 
+    fetchCategoryTree, 
+    createExpense, 
+    deleteExpense, 
+    isLoading,
+    filters 
+  } = useExpenseStore()
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false)
+  const [, setCurrentEditExpense] = useState<any>(null)
+  const [viewMode, setViewMode] = useState<'summary' | 'list'>('summary')
 
   useEffect(() => {
     fetchExpenses()
-  }, [fetchExpenses])
+    fetchCategoryTree()
+  }, [fetchExpenses, fetchCategoryTree])
 
   const handleAddExpense = async (expenseData: CreateExpenseRequest) => {
     try {
@@ -26,6 +40,11 @@ export function ExpensesPage() {
       console.error('Failed to add expense:', error)
       alert('Failed to add expense. Please try again.')
     }
+  }
+
+  const handleEditExpense = (expense: any) => {
+    // TODO: Implement editing functionality
+    alert('Edit functionality coming soon!')
   }
 
   const handleDeleteExpense = async (id: string) => {
@@ -39,12 +58,41 @@ export function ExpensesPage() {
     }
   }
 
+  const handleFiltersChange = (newFilters: ExpenseFiltersType) => {
+    // Filters are automatically applied through the store
+    console.log('Filters changed:', newFilters)
+  }
+
+  // Get category and subcategory info for each expense
+  const getExpenseCategory = (expense: any) => {
+    // First check if it's a primary category
+    const primaryCategory = categoryTree.find(cat => cat.id === expense.categoryId)
+    if (primaryCategory) return primaryCategory
+    
+    // Then check if it's a subcategory and return its parent
+    for (const primaryCat of categoryTree) {
+      const subcategory = primaryCat.subcategories.find(sub => sub.id === expense.categoryId)
+      if (subcategory) return primaryCat
+    }
+    return undefined
+  }
+
+  const getExpenseSubcategory = (expense: any) => {
+    if (!expense.subcategoryId) return undefined
+    
+    for (const primaryCat of categoryTree) {
+      const subcategory = primaryCat.subcategories.find(sub => sub.id === expense.subcategoryId)
+      if (subcategory) return subcategory
+    }
+    return undefined
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded-lg"></div>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading expenses...</span>
         </div>
       </div>
     )
@@ -52,94 +100,125 @@ export function ExpensesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
           <p className="text-muted-foreground">
-            Track and manage all your expenses
+            Track and manage all your expenses with advanced filtering and insights
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setIsExpenseFormOpen(true)}>
-          <PlusCircle className="h-4 w-4" />
-          Add Expense
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+            <Button
+              variant={viewMode === 'summary' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('summary')}
+              className="h-8"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Summary
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="h-8"
+            >
+              <List className="h-4 w-4 mr-2" />
+              List
+            </Button>
+          </div>
+          
+          <Button className="gap-2" onClick={() => setIsExpenseFormOpen(true)}>
+            <PlusCircle className="h-4 w-4" />
+            Add Expense
+          </Button>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Expenses</CardTitle>
-          <CardDescription>
-            View and manage your expense history
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {expenses.length > 0 ? (
-            <div className="space-y-4">
-              {expenses.map((expense) => (
-                <div key={expense.id} className="flex items-center justify-between p-4 rounded-lg border">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <Receipt className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{expense.description}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(expense.expenseDate)} • {expense.paymentMethod?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                        </p>
-                        {expense.categoryId && (
-                          <p className="text-xs text-muted-foreground capitalize">
-                            Category ID: {expense.categoryId}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="font-medium text-lg">
-                        {formatCurrency(expense.amount, expense.currency)}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => alert('Edit functionality coming soon!')}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+      {/* Filters */}
+      <ExpenseFilters onFiltersChange={handleFiltersChange} />
+
+      {/* Summary Row - Always Visible */}
+      {viewMode === 'summary' && (
+        <div className="w-full">
+          <CategorySummary 
+            expenses={expenses} 
+            dateRange={{
+              startDate: filters.startDate,
+              endDate: filters.endDate
+            }}
+          />
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="w-full">
+        {/* Expenses List */}
+        <div className="w-full">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>
+                    {expenses.length > 0 
+                      ? `${expenses.length} Expense${expenses.length !== 1 ? 's' : ''}` 
+                      : 'All Expenses'
+                    }
+                  </CardTitle>
+                  <CardDescription>
+                    {expenses.length > 0 
+                      ? 'View and manage your expense history'
+                      : 'No expenses found matching your filters'
+                    }
+                  </CardDescription>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Receipt className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No expenses yet</h3>
-              <p className="text-muted-foreground mb-6">
-                Start tracking your expenses by adding your first transaction.
-              </p>
-              <Button className="gap-2" onClick={() => setIsExpenseFormOpen(true)}>
-                <PlusCircle className="h-4 w-4" />
-                Add Your First Expense
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {expenses.length > 0 ? (
+                <div className="space-y-4">
+                  {expenses.map((expense) => (
+                    <ExpenseCard
+                      key={expense.id}
+                      expense={expense}
+                      category={getExpenseCategory(expense)}
+                      subcategory={getExpenseSubcategory(expense)}
+                      onEdit={handleEditExpense}
+                      onDelete={handleDeleteExpense}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Receipt className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No expenses found</h3>
+                  <p className="text-muted-foreground mb-6">
+                    {Object.keys(filters).length > 0 
+                      ? 'Try adjusting your filters or add a new expense to get started.'
+                      : 'Start tracking your expenses by adding your first transaction.'
+                    }
+                  </p>
+                  <Button className="gap-2" onClick={() => setIsExpenseFormOpen(true)}>
+                    <PlusCircle className="h-4 w-4" />
+                    Add Your First Expense
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Expense Form Modal */}
       <ExpenseForm
         isOpen={isExpenseFormOpen}
-        onClose={() => setIsExpenseFormOpen(false)}
+        onClose={() => {
+          setIsExpenseFormOpen(false)
+          setCurrentEditExpense(null)
+        }}
         onSubmit={handleAddExpense}
       />
     </div>

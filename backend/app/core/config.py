@@ -64,9 +64,12 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_FILE_TYPES: Union[str, List[str]] = Field(default=["image/jpeg", "image/png", "application/pdf"])
     
-    # Currency API
-    CURRENCY_API_KEY: Optional[str] = None
-    CURRENCY_API_URL: str = "https://v6.exchangerate-api.com/v6"
+    # Currency API Configuration
+    CURRENCY_API_KEY: Optional[str] = "demo"
+    CURRENCY_API_BASE_URL: str = "https://api.fastforex.io/fetch-one"
+    CURRENCY_API_TIMEOUT: int = 10
+    CURRENCY_CACHE_DURATION_HOURS: int = 1
+    CURRENCY_FALLBACK_RATES: str = '{"USD": {"EUR": "0.85", "MAD": "10.0", "BTC": "0.000025"}}'
     
     # Email (Optional)
     SMTP_HOST: Optional[str] = None
