@@ -51,11 +51,6 @@ export function LoginPage() {
 
   return (
     <div className="space-y-6">
-      {/* Tailwind CSS Test - This should be blue with white text */}
-      <div className="bg-blue-600 text-white p-4 rounded-lg shadow-lg border-2 border-red-500">
-        <p className="font-bold text-xl">🎨 Tailwind CSS Test</p>
-        <p className="text-sm">If this is BLUE with WHITE text and RED border, Tailwind works!</p>
-      </div>
       
       <div className="text-center">
         <CardTitle className="text-2xl">Welcome back</CardTitle>
@@ -153,17 +148,6 @@ export function LoginPage() {
           </Link>
         </p>
       </div>
-
-      {/* Demo credentials (for development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-8 p-4 rounded-lg bg-muted">
-          <p className="text-sm font-medium mb-2">Demo Account:</p>
-          <p className="text-xs text-muted-foreground">
-            Email: demo@spendly.local<br />
-            Password: demo123
-          </p>
-        </div>
-      )}
     </div>
   )
 }

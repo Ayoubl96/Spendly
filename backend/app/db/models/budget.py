@@ -33,6 +33,7 @@ class Budget(Base):
     # Relationships
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True, index=True)
+    budget_group_id = Column(UUID(as_uuid=True), ForeignKey("budget_groups.id"), nullable=True, index=True)
     
     # Settings
     alert_threshold = Column(String, default="80.0", nullable=False)  # Alert at X% of budget
@@ -46,6 +47,7 @@ class Budget(Base):
     user = relationship("User", back_populates="budgets")
     category = relationship("Category", back_populates="budgets")
     currency_obj = relationship("Currency", back_populates="budgets")
+    budget_group = relationship("BudgetGroup", back_populates="budgets")
     
     # Constraints
     __table_args__ = (

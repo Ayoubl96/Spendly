@@ -30,6 +30,7 @@ class Currency(Base):
     # Relationships
     expenses = relationship("Expense", back_populates="currency_obj", lazy="dynamic")
     budgets = relationship("Budget", back_populates="currency_obj", lazy="dynamic")
+    budget_groups = relationship("BudgetGroup", back_populates="currency_obj", lazy="dynamic")
     exchange_rates_from = relationship(
         "ExchangeRate", 
         foreign_keys="ExchangeRate.from_currency",

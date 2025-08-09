@@ -2,7 +2,10 @@
 Currency conversion service with live exchange rates
 """
 
-import httpx
+try:
+    import httpx  # Preferred async HTTP client
+except Exception:  # ModuleNotFoundError or any import-time failure
+    httpx = None
 import logging
 import json
 from decimal import Decimal, ROUND_HALF_UP
@@ -130,28 +133,43 @@ class CurrencyConversionService:
         return None
     
     async def _try_fastforex_api(self, from_currency: str, to_currency: str) -> Optional[Decimal]:
-        """Try to fetch rate from FastFOREX API"""
+        """Try to fetch rate from FastFOREX API (prefers httpx; falls back to requests if unavailable)."""
+        # Prefer httpx when available
+        if httpx is not None:
+            try:
+                async with httpx.AsyncClient(timeout=self.api_timeout) as client:
+                    params = {
+                        "from": from_currency,
+                        "to": to_currency,
+                        "api_key": self.api_key or "demo"
+                    }
+                    response = await client.get(self.api_base_url, params=params)
+                    response.raise_for_status()
+                    data = response.json()
+                    if "result" in data and to_currency in data["result"]:
+                        rate_value = data["result"][to_currency]
+                        return Decimal(str(rate_value))
+            except Exception as e:
+                logger.error(f"FastFOREX API request failed for {from_currency}/{to_currency}: {e}")
+                # fall through to requests fallback
+
+        # Fallback to requests if httpx not available or failed
         try:
-            async with httpx.AsyncClient(timeout=self.api_timeout) as client:
-                params = {
-                    "from": from_currency,
-                    "to": to_currency,
-                    "api_key": self.api_key or "demo"
-                }
-                
-                response = await client.get(self.api_base_url, params=params)
-                response.raise_for_status()
-                
-                data = response.json()
-                
-                # FastFOREX response format: {"base": "USD", "result": {"EUR": 0.86428}, ...}
-                if "result" in data and to_currency in data["result"]:
-                    rate_value = data["result"][to_currency]
-                    return Decimal(str(rate_value))
-                    
+            import requests  # Lazy import to avoid mandatory dependency at startup
+            params = {
+                "from": from_currency,
+                "to": to_currency,
+                "api_key": self.api_key or "demo"
+            }
+            resp = requests.get(self.api_base_url, params=params, timeout=float(self.api_timeout))
+            resp.raise_for_status()
+            data = resp.json()
+            if "result" in data and to_currency in data["result"]:
+                rate_value = data["result"][to_currency]
+                return Decimal(str(rate_value))
         except Exception as e:
-            logger.error(f"FastFOREX API request failed for {from_currency}/{to_currency}: {e}")
-        
+            logger.error(f"Fallback requests API call failed for {from_currency}/{to_currency}: {e}")
+
         return None
     
     def _get_fallback_rate(self, from_currency: str, to_currency: str) -> Optional[Decimal]:

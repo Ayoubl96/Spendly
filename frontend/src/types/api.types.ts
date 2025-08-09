@@ -216,10 +216,111 @@ export interface Budget {
   userId: string
   categoryId?: string
   subcategoryId?: string
+  budgetGroupId?: string
   alertThreshold: number
   is_active: boolean
   createdAt: string
   updatedAt: string
+}
+
+// Budget Group Types
+export interface BudgetGroup {
+  id: string
+  name: string
+  description?: string
+  periodType: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+  startDate: string
+  endDate: string
+  currency: string
+  userId: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CategoryBudgetConfig {
+  category_id: string
+  amount: number
+}
+
+export interface CreateBudgetGroupRequest {
+  name: string
+  description?: string
+  periodType: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+  startDate: string
+  endDate: string
+  currency: string
+  // auto-generation options
+  auto_create_budgets?: boolean
+  category_scope?: 'primary' | 'subcategories' | 'all'
+  default_amount?: number
+  include_inactive_categories?: boolean
+  category_configs?: CategoryBudgetConfig[]
+}
+
+export interface UpdateBudgetGroupRequest {
+  name?: string
+  description?: string
+  periodType?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+  startDate?: string
+  endDate?: string
+  currency?: string
+  isActive?: boolean
+}
+
+export interface GenerateBudgetsRequest {
+  category_scope?: 'primary' | 'subcategories' | 'all'
+  default_amount?: number
+  include_inactive_categories?: boolean
+}
+
+export interface BulkBudgetUpdateItem {
+  budget_id?: string
+  category_id?: string
+  amount: number
+}
+
+export interface BulkBudgetsUpdateRequest {
+  items: BulkBudgetUpdateItem[]
+}
+
+export interface CategorySummary {
+  categoryId: string
+  categoryName: string
+  budgeted: number
+  spent: number
+  remaining: number
+  percentage_used?: number
+  subcategories: Record<string, {
+    categoryId: string
+    categoryName: string
+    budgeted: number
+    spent: number
+    remaining: number
+    percentage_used?: number
+  }>
+}
+
+export interface BudgetGroupSummary {
+  budget_group: BudgetGroup
+  total_budgeted: number
+  total_spent: number
+  total_remaining: number
+  percentage_used: number
+  status: 'on_track' | 'warning' | 'over_budget'
+  budget_count: number
+  category_summaries: Record<string, CategorySummary>
+}
+
+export interface BudgetGroupWithBudgets extends BudgetGroup {
+  budgets: Budget[]
+}
+
+export interface BudgetGroupList {
+  items: BudgetGroup[]
+  total: number
+  active_groups: number
+  current_period_groups: number
 }
 
 export interface BudgetPerformance {
@@ -228,7 +329,7 @@ export interface BudgetPerformance {
   amount: number
   spent: number
   remaining: number
-  percentageUsed: number
+  percentage_used: number
   status: 'on_track' | 'warning' | 'over_budget'
   isOverBudget: boolean
   shouldAlert: boolean
@@ -290,4 +391,121 @@ export interface PaginationParams {
   limit?: number
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+}
+
+// Expense Import Types
+export interface ExpenseImportPreviewData {
+  success: boolean
+  expenses: ImportExpenseData[]
+  summary: {
+    total_transactions: number
+    new_transactions: number
+    duplicate_transactions: number
+    total_amount: number
+    currency: string
+    date_range: {
+      start: string
+      end: string
+    }
+    categorization_stats: {
+      rule_matches: number
+      heuristic_matches: number
+      no_suggestions: number
+    }
+  }
+  error?: string
+}
+
+export interface ImportExpenseData {
+  unique_id: string
+  expense_date: string
+  amount: number
+  currency: string
+  description: string
+  vendor?: string
+  payment_method?: 'cash' | 'card' | 'bank_transfer' | 'other'
+  notes?: string
+  category_id?: string
+  subcategory_id?: string
+  suggested_category_id?: string
+  suggested_subcategory_id?: string
+  suggested_category_name?: string
+  suggestion_confidence: number
+  suggestion_reason: string
+  suggestion_source: 'rule' | 'heuristic' | 'none'
+  is_duplicate: boolean
+  excluded?: boolean
+  create_rule?: boolean
+  raw_data?: any
+}
+
+export interface ExpenseImportResult {
+  success: boolean
+  imported_count: number
+  error_count: number
+  imported_expense_ids: string[]
+  created_rule_ids: string[]
+  errors: Array<{
+    index: number
+    error: string
+    expense_data?: any
+  }>
+}
+
+export interface ExpenseImportCommitRequest {
+  expenses: ImportExpenseData[]
+  create_rules: boolean
+}
+
+// Categorization Rule Types
+export interface CategorizationRule {
+  id: string
+  user_id: string
+  pattern: string
+  pattern_type: 'contains' | 'exact' | 'regex' | 'starts_with'
+  field_to_match: 'vendor' | 'description' | 'notes'
+  category_id?: string
+  subcategory_id?: string
+  name: string
+  priority: number
+  is_active: boolean
+  confidence: number
+  times_applied: number
+  last_applied_at?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateCategorizationRuleRequest {
+  pattern: string
+  pattern_type?: 'contains' | 'exact' | 'regex' | 'starts_with'
+  field_to_match?: 'vendor' | 'description' | 'notes'
+  category_id?: string
+  subcategory_id?: string
+  name: string
+  priority?: number
+  is_active?: boolean
+  confidence?: number
+  notes?: string
+}
+
+export interface UpdateCategorizationRuleRequest {
+  pattern?: string
+  pattern_type?: 'contains' | 'exact' | 'regex' | 'starts_with'
+  field_to_match?: 'vendor' | 'description' | 'notes'
+  category_id?: string
+  subcategory_id?: string
+  name?: string
+  priority?: number
+  is_active?: boolean
+  confidence?: number
+  notes?: string
+}
+
+export interface CategorizationRuleStats {
+  total_rules: number
+  active_rules: number
+  total_applications: number
+  average_confidence: number
 }

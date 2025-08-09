@@ -34,6 +34,7 @@ class BudgetBase(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     category_id: Optional[UUID] = None
+    budget_group_id: Optional[UUID] = None
     alert_threshold: Decimal = Decimal("80.0")
     is_active: bool = True
     
@@ -41,12 +42,18 @@ class BudgetBase(BaseModel):
     def serialize_category_id(self, value: Optional[UUID]) -> Optional[str]:
         # Convert UUID to string for JSON serialization
         return str(value) if value else None
+    
+    @field_serializer('budget_group_id', when_used='json')
+    def serialize_budget_group_id(self, value: Optional[UUID]) -> Optional[str]:
+        # Convert UUID to string for JSON serialization
+        return str(value) if value else None
 
 
 class BudgetCreate(BudgetBase):
     """Schema for creating a budget"""
-    # Allow category_id to be provided as string from frontend
+    # Allow category_id and budget_group_id to be provided as string from frontend
     category_id: Optional[str] = None
+    budget_group_id: Optional[str] = None
     
     @validator("amount")
     def validate_amount(cls, v):
@@ -84,6 +91,13 @@ class BudgetCreate(BudgetBase):
             return None
         # Accept string input from frontend
         return v
+    
+    @validator("budget_group_id", pre=True)
+    def validate_budget_group_id(cls, v):
+        if v is None or v == "":
+            return None
+        # Accept string input from frontend
+        return v
 
 
 class BudgetUpdate(BaseModel):
@@ -95,11 +109,19 @@ class BudgetUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     category_id: Optional[str] = None  # Accept string from frontend
+    budget_group_id: Optional[str] = None  # Accept string from frontend
     alert_threshold: Optional[Decimal] = None
     is_active: Optional[bool] = None
     
     @validator("category_id", pre=True)
     def validate_category_id(cls, v):
+        if v is None or v == "":
+            return None
+        # Accept string input from frontend
+        return v
+    
+    @validator("budget_group_id", pre=True)
+    def validate_budget_group_id(cls, v):
         if v is None or v == "":
             return None
         # Accept string input from frontend
@@ -150,7 +172,7 @@ class BudgetPerformance(BaseModel):
     period_type: PeriodType
     start_date: date
     end_date: Optional[date] = None
-    category: Optional[dict] = None
+    category_id: Optional[UUID] = None
     
     @field_serializer('budget_id', when_used='json')
     def serialize_budget_id(self, value: UUID) -> str:

@@ -25,7 +25,8 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
         limit: int = 100,
         is_active: Optional[bool] = None,
         period_type: Optional[str] = None,
-        category_id: Optional[Any] = None
+        category_id: Optional[Any] = None,
+        budget_group_id: Optional[Any] = None
     ) -> List[Budget]:
         """Get budgets for a user with filtering"""
         query = db.query(Budget).filter(Budget.user_id == user_id)
@@ -40,6 +41,11 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             # Convert category_id to UUID for filtering if it's a string
             filter_category_id = UUID(category_id) if isinstance(category_id, str) else category_id
             query = query.filter(Budget.category_id == filter_category_id)
+        
+        if budget_group_id:
+            # Convert budget_group_id to UUID for filtering if it's a string
+            filter_budget_group_id = UUID(budget_group_id) if isinstance(budget_group_id, str) else budget_group_id
+            query = query.filter(Budget.budget_group_id == filter_budget_group_id)
         
         return query.order_by(Budget.start_date.desc()).offset(skip).limit(limit).all()
     
@@ -90,6 +96,11 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
         if obj_in.category_id:
             category_id = UUID(obj_in.category_id) if isinstance(obj_in.category_id, str) else obj_in.category_id
         
+        # Convert budget_group_id from string to UUID if provided
+        budget_group_id = None
+        if hasattr(obj_in, 'budget_group_id') and obj_in.budget_group_id:
+            budget_group_id = UUID(obj_in.budget_group_id) if isinstance(obj_in.budget_group_id, str) else obj_in.budget_group_id
+        
         db_obj = Budget(
             name=obj_in.name,
             amount=str(obj_in.amount),
@@ -99,6 +110,7 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             end_date=obj_in.end_date,
             user_id=user_id,
             category_id=category_id,
+            budget_group_id=budget_group_id,
             alert_threshold=str(obj_in.alert_threshold),
             is_active=obj_in.is_active
         )
@@ -108,13 +120,18 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
         return db_obj
     
     def update(self, db: Session, *, db_obj: Budget, obj_in: BudgetUpdate) -> Budget:
-        """Update budget with UUID conversion for category_id"""
+        """Update budget with UUID conversion for category_id and budget_group_id"""
         update_data = obj_in.model_dump(exclude_unset=True)
         
         # Convert category_id from string to UUID if provided
         if 'category_id' in update_data and update_data['category_id']:
             if isinstance(update_data['category_id'], str):
                 update_data['category_id'] = UUID(update_data['category_id'])
+        
+        # Convert budget_group_id from string to UUID if provided
+        if 'budget_group_id' in update_data and update_data['budget_group_id']:
+            if isinstance(update_data['budget_group_id'], str):
+                update_data['budget_group_id'] = UUID(update_data['budget_group_id'])
         
         for field, value in update_data.items():
             setattr(db_obj, field, value)
@@ -152,7 +169,9 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             "currency": budget.currency,
             "period_type": budget.period_type,
             "start_date": budget.start_date,
-            "end_date": budget.end_date
+            "end_date": budget.end_date,
+            # Include category_id so the summary API exposes it per budget (serialize to string)
+            "category_id": str(budget.category_id) if budget.category_id else None
         }
     
     def get_budget_summary(
@@ -194,7 +213,8 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             "overall_status": overall_status,
             "budget_count": len(current_budgets),
             "status_counts": status_counts,
-            "budgets": budget_performances
+            "budgets": budget_performances,
+            "category_id": current_budgets[0].category_id
         }
     
     def get_by_category(
@@ -213,6 +233,28 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             .filter(
                 Budget.user_id == user_id,
                 Budget.category_id == filter_category_id,
+                Budget.is_active == True
+            )
+            .order_by(Budget.start_date.desc())
+            .all()
+        )
+    
+    def get_by_budget_group(
+        self, 
+        db: Session, 
+        *, 
+        user_id: Any, 
+        budget_group_id: Any
+    ) -> List[Budget]:
+        """Get budgets for a specific budget group"""
+        # Convert budget_group_id to UUID if it's a string
+        filter_budget_group_id = UUID(budget_group_id) if isinstance(budget_group_id, str) else budget_group_id
+        
+        return (
+            db.query(Budget)
+            .filter(
+                Budget.user_id == user_id,
+                Budget.budget_group_id == filter_budget_group_id,
                 Budget.is_active == True
             )
             .order_by(Budget.start_date.desc())

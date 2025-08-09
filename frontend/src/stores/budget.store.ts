@@ -16,6 +16,7 @@ export interface CreateBudgetRequest {
   startDate: string
   endDate?: string
   categoryId?: string
+  budgetGroupId?: string
   alertThreshold?: number
 }
 
@@ -27,6 +28,7 @@ export interface BudgetFilters {
   is_active?: boolean
   periodType?: string
   categoryId?: string
+  budgetGroupId?: string
   status?: 'on_track' | 'warning' | 'over_budget'
 }
 
@@ -58,6 +60,7 @@ interface BudgetState {
   getActiveBudgets: () => Budget[]
   getBudgetsByStatus: (status: 'on_track' | 'warning' | 'over_budget') => Budget[]
   getBudgetsByCategory: (categoryId: string) => Budget[]
+  getBudgetsByGroup: (budgetGroupId: string) => Budget[]
 }
 
 const initialFilters: BudgetFilters = {
@@ -259,5 +262,10 @@ export const useBudgetStore = create<BudgetState>((set, get) => ({
   getBudgetsByCategory: (categoryId: string) => {
     const { budgets } = get()
     return budgets.filter(budget => budget.categoryId === categoryId)
+  },
+
+  getBudgetsByGroup: (budgetGroupId: string) => {
+    const { budgets } = get()
+    return budgets.filter(budget => budget.budgetGroupId === budgetGroupId)
   },
 }))

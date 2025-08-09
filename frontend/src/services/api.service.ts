@@ -17,7 +17,22 @@ import {
   Budget,
   BudgetSummary,
   BudgetPerformance,
+  BudgetGroup,
+  BudgetGroupList,
+  BudgetGroupSummary,
+  BudgetGroupWithBudgets,
+  CreateBudgetGroupRequest,
+  UpdateBudgetGroupRequest,
+  GenerateBudgetsRequest,
+  BulkBudgetsUpdateRequest,
   ExpenseSummary,
+  ExpenseImportPreviewData,
+  ExpenseImportResult,
+  ExpenseImportCommitRequest,
+  CategorizationRule,
+  CreateCategorizationRuleRequest,
+  UpdateCategorizationRuleRequest,
+  CategorizationRuleStats,
 } from '../types/api.types'
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1'
@@ -332,6 +347,7 @@ class ApiService {
     startDate: string
     endDate?: string
     categoryId?: string
+    budgetGroupId?: string
     alertThreshold?: number
   }): Promise<Budget> {
     return this.request<Budget>('/budgets/', {
@@ -344,6 +360,7 @@ class ApiService {
         start_date: data.startDate,
         end_date: data.endDate,
         category_id: data.categoryId,
+        budget_group_id: data.budgetGroupId,
         alert_threshold: data.alertThreshold || 80,
       }),
     })
@@ -357,6 +374,7 @@ class ApiService {
     startDate?: string
     endDate?: string
     categoryId?: string
+    budgetGroupId?: string
     alertThreshold?: number
     isActive?: boolean
   }): Promise<Budget> {
@@ -370,6 +388,7 @@ class ApiService {
         start_date: data.startDate,
         end_date: data.endDate,
         category_id: data.categoryId,
+        budget_group_id: data.budgetGroupId,
         alert_threshold: data.alertThreshold,
         is_active: data.isActive,
       }),
@@ -388,6 +407,94 @@ class ApiService {
 
   async getBudgetPerformance(budgetId: string): Promise<BudgetPerformance> {
     return this.request<BudgetPerformance>(`/budgets/${budgetId}/performance`)
+  }
+
+  // Budget Group endpoints
+  async getBudgetGroups(): Promise<BudgetGroupList> {
+    return this.request<BudgetGroupList>('/budget-groups/')
+  }
+
+  async getCurrentBudgetGroups(): Promise<BudgetGroup[]> {
+    return this.request<BudgetGroup[]>('/budget-groups/current')
+  }
+
+  async getBudgetGroupsSummary(includeInactive = false): Promise<any> {
+    return this.request(`/budget-groups/summary?include_inactive=${includeInactive}`)
+  }
+
+  async createBudgetGroup(data: CreateBudgetGroupRequest): Promise<BudgetGroup> {
+    return this.request<BudgetGroup>('/budget-groups/', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: data.name,
+        description: data.description,
+        period_type: data.periodType,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        currency: data.currency,
+        is_active: true,
+        auto_create_budgets: data.auto_create_budgets ?? true,
+        category_scope: data.category_scope ?? 'all',
+        default_amount: data.default_amount ?? 0,
+        include_inactive_categories: data.include_inactive_categories ?? false,
+        category_configs: data.category_configs ?? [],
+      }),
+    })
+  }
+
+  async getBudgetGroup(budgetGroupId: string): Promise<BudgetGroup> {
+    return this.request<BudgetGroup>(`/budget-groups/${budgetGroupId}`)
+  }
+
+  async getBudgetGroupWithBudgets(budgetGroupId: string): Promise<BudgetGroupWithBudgets> {
+    return this.request<BudgetGroupWithBudgets>(`/budget-groups/${budgetGroupId}/with-budgets`)
+  }
+
+  async getBudgetGroupSummary(budgetGroupId: string): Promise<BudgetGroupSummary> {
+    return this.request<BudgetGroupSummary>(`/budget-groups/${budgetGroupId}/summary`)
+  }
+
+  async getBudgetGroupBudgets(budgetGroupId: string): Promise<Budget[]> {
+    return this.request<Budget[]>(`/budget-groups/${budgetGroupId}/budgets`)
+  }
+
+  async updateBudgetGroup(budgetGroupId: string, data: UpdateBudgetGroupRequest): Promise<BudgetGroup> {
+    return this.request<BudgetGroup>(`/budget-groups/${budgetGroupId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: data.name,
+        description: data.description,
+        period_type: data.periodType,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        currency: data.currency,
+        is_active: data.isActive,
+      }),
+    })
+  }
+
+  async deleteBudgetGroup(budgetGroupId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/budget-groups/${budgetGroupId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async generateBudgetsForGroup(budgetGroupId: string, data: GenerateBudgetsRequest): Promise<{ created: number }> {
+    return this.request<{ created: number }>(`/budget-groups/${budgetGroupId}/generate-budgets`, {
+      method: 'POST',
+      body: JSON.stringify({
+        category_scope: data.category_scope ?? 'all',
+        default_amount: data.default_amount ?? 0,
+        include_inactive_categories: data.include_inactive_categories ?? false,
+      }),
+    })
+  }
+
+  async bulkUpdateBudgets(budgetGroupId: string, data: BulkBudgetsUpdateRequest): Promise<{ updated: number }> {
+    return this.request<{ updated: number }>(`/budget-groups/${budgetGroupId}/bulk-update-budgets`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
   }
 
   // Analytics endpoints
@@ -423,6 +530,94 @@ class ApiService {
     return this.request(`/budget-plans/${year}/${month}`, {
       method: 'DELETE'
     })
+  }
+
+  // Expense Import endpoints
+  async previewExpenseImport(file: File): Promise<ExpenseImportPreviewData> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await fetch(`${this.baseURL}/expense-import/preview`, {
+      method: 'POST',
+      headers: {
+        'Authorization': this.authToken ? `Bearer ${this.authToken}` : ''
+      },
+      body: formData
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        this.clearAuthToken()
+        window.location.href = '/login'
+        throw new Error('Unauthorized')
+      }
+      
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`)
+    }
+
+    return response.json()
+  }
+
+  async commitExpenseImport(data: ExpenseImportCommitRequest): Promise<ExpenseImportResult> {
+    return this.request<ExpenseImportResult>('/expense-import/commit', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  // Categorization Rule endpoints
+  async getCategorizationRules(isActive?: boolean): Promise<CategorizationRule[]> {
+    const params = new URLSearchParams()
+    if (isActive !== undefined) params.append('is_active', isActive.toString())
+    
+    return this.request<CategorizationRule[]>(`/expense-import/rules${params.toString() ? `?${params.toString()}` : ''}`)
+  }
+
+  async createCategorizationRule(data: CreateCategorizationRuleRequest): Promise<CategorizationRule> {
+    return this.request<CategorizationRule>('/expense-import/rules', {
+      method: 'POST',
+      body: JSON.stringify({
+        pattern: data.pattern,
+        pattern_type: data.pattern_type || 'contains',
+        field_to_match: data.field_to_match || 'vendor',
+        category_id: data.category_id,
+        subcategory_id: data.subcategory_id,
+        name: data.name,
+        priority: data.priority || 100,
+        is_active: data.is_active !== false,
+        confidence: data.confidence || 90,
+        notes: data.notes
+      })
+    })
+  }
+
+  async updateCategorizationRule(ruleId: string, data: UpdateCategorizationRuleRequest): Promise<CategorizationRule> {
+    return this.request<CategorizationRule>(`/expense-import/rules/${ruleId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        pattern: data.pattern,
+        pattern_type: data.pattern_type,
+        field_to_match: data.field_to_match,
+        category_id: data.category_id,
+        subcategory_id: data.subcategory_id,
+        name: data.name,
+        priority: data.priority,
+        is_active: data.is_active,
+        confidence: data.confidence,
+        notes: data.notes
+      })
+    })
+  }
+
+  async deleteCategorizationRule(ruleId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/expense-import/rules/${ruleId}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async getCategorizationRuleStats(): Promise<CategorizationRuleStats> {
+    return this.request<CategorizationRuleStats>('/expense-import/rules/stats')
   }
 }
 

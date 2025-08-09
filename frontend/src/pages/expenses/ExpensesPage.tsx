@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { ExpenseForm } from '../../components/forms/ExpenseForm'
@@ -7,10 +8,11 @@ import { ExpenseCard } from '../../components/expenses/ExpenseCard'
 import { CategorySummary } from '../../components/expenses/CategorySummary'
 import { useExpenseStore } from '../../stores/expense.store'
 // import { useAuthStore } from '../../stores/auth.store' // Not used currently
-import { PlusCircle, Receipt, BarChart3, List, Loader2 } from 'lucide-react'
+import { PlusCircle, Receipt, BarChart3, List, Loader2, Upload } from 'lucide-react'
 import { CreateExpenseRequest, ExpenseFilters as ExpenseFiltersType } from '../../types/api.types'
 
 export function ExpensesPage() {
+  const navigate = useNavigate()
   // const { user } = useAuthStore() // Commented out as not used currently
   const { 
     expenses, 
@@ -109,6 +111,16 @@ export function ExpensesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Import Button */}
+          <Button
+            variant="outline"
+            onClick={() => navigate('/expenses/import')}
+            className="gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import Expenses
+          </Button>
+          
           {/* View Mode Toggle */}
           <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
             <Button

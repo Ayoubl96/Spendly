@@ -11,8 +11,10 @@ import { LoginPage } from './pages/auth/LoginPage'
 import { RegisterPage } from './pages/auth/RegisterPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { ExpensesPage } from './pages/expenses/ExpensesPage'
+import { ExpenseImportPage } from './pages/expenses/ExpenseImportPage'
 import { CategoriesPage } from './pages/categories/CategoriesPage'
-import { BudgetPage } from './pages/budget/BudgetPage'
+import { BudgetOverviewPage } from './pages/budget/BudgetOverviewPage'
+import { BudgetManagementPage } from './pages/budget/BudgetManagementPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
 
 // Auth protection
@@ -55,8 +57,10 @@ function App() {
             >
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="expenses" element={<ExpensesPage />} />
+              <Route path="expenses/import" element={<ExpenseImportPage />} />
               <Route path="categories" element={<CategoriesPage />} />
-              <Route path="budget" element={<BudgetPage />} />
+              <Route path="budget" element={<BudgetOverviewPage />} />
+              <Route path="budget/manage/:id" element={<BudgetManagementPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>

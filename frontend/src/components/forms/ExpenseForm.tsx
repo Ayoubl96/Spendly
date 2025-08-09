@@ -141,7 +141,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
     return {
       currentSpent: performance.spent,
       newSpent,
-      currentPercentage: performance.percentageUsed,
+      currentPercentage: performance.percentage_used,
       newPercentage,
       willExceedAlert,
       willExceedBudget,

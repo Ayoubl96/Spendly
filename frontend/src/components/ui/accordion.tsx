@@ -126,6 +126,7 @@ const AccordionTrigger = React.forwardRef<HTMLButtonElement, AccordionTriggerPro
     return (
       <div className="flex" ref={itemElement}>
         <button
+          type="button"
           ref={ref}
           className={cn(
             "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline",

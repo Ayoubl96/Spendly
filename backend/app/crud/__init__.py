@@ -8,6 +8,7 @@ from .crud_category import category_crud
 from .crud_currency import currency_crud
 from .crud_expense import expense_crud
 from .crud_budget import budget_crud
+from .crud_budget_group import budget_group_crud
 
 __all__ = [
     "CRUDBase",
@@ -15,5 +16,6 @@ __all__ = [
     "category_crud", 
     "currency_crud",
     "expense_crud",
-    "budget_crud"
+    "budget_crud",
+    "budget_group_crud"
 ]

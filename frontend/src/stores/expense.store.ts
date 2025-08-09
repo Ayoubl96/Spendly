@@ -49,7 +49,7 @@ interface ExpenseState {
 const initialFilters: ExpenseFilters = {}
 const initialPagination: PaginationParams = {
   page: 1,
-  limit: 20,
+  limit: 9000,
   sortBy: 'expenseDate',
   sortOrder: 'desc',
 }

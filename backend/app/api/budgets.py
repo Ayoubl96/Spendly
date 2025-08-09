@@ -21,7 +21,8 @@ def read_budgets(
     commons: CommonQueryParams = Depends(),
     is_active: Optional[bool] = Query(None),
     period_type: Optional[str] = Query(None),
-    category_id: Optional[str] = Query(None)
+    category_id: Optional[str] = Query(None),
+    budget_group_id: Optional[str] = Query(None)
 ) -> Any:
     """
     Retrieve user's budgets with filtering
@@ -33,7 +34,8 @@ def read_budgets(
         limit=commons.limit,
         is_active=is_active,
         period_type=period_type,
-        category_id=category_id
+        category_id=category_id,
+        budget_group_id=budget_group_id
     )
     return budgets
 
