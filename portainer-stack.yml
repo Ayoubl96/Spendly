@@ -74,6 +74,7 @@ services:
       context: https://github.com/Ayoubl96/Spendly.git#main:frontend
       dockerfile: Dockerfile.prod
       args:
+        - CI=false
         - REACT_APP_API_URL=${BACKEND_URL:-http://localhost:9000}/api/v1
         - REACT_APP_UPLOAD_URL=${BACKEND_URL:-http://localhost:9000}/uploads
     container_name: spendly-frontend

@@ -5,10 +5,12 @@ FROM node:18-alpine AS build
 WORKDIR /app
 
 # Declare build arguments
+ARG CI
 ARG REACT_APP_API_URL
 ARG REACT_APP_UPLOAD_URL
 
 # Set them as environment variables
+ENV CI=${CI}
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 ENV REACT_APP_UPLOAD_URL=${REACT_APP_UPLOAD_URL}
 
