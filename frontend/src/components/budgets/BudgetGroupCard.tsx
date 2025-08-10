@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Card } from '../ui/card'
 import { Button } from '../ui/button'
 import { CircularProgress } from '../ui/circular-progress'
@@ -23,6 +23,7 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
   onDelete,
   onClick
 }) => {
+  const [isDeleteFormOpen, setIsDeleteFormOpen] = useState(false)
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -99,17 +100,43 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
             </Button>
           )}
           {onDelete && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-              }}
-              className="text-red-600 hover:text-red-700"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDeleteFormOpen(true);
+                }}
+                className="text-red-600 hover:text-red-700"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </Button>
+
+              {isDeleteFormOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 className="text-lg font-medium mb-4">Delete Budget Group</h3>
+                    <p className="text-gray-600 mb-6">Are you sure you want to delete this budget group?</p>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setIsDeleteFormOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => {
+                          onDelete();
+                          setIsDeleteFormOpen(false);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

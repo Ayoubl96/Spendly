@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Settings
 } from 'lucide-react'
+import { CurrencyAmountDisplay } from '../../components/ui/currency-amount-display'
 
 type ViewMode = 'overview' | 'create-group' | 'edit-group'
 
@@ -165,7 +166,11 @@ export function BudgetOverviewPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Budget</p>
                   <p className="text-2xl font-bold">
-                    {budgetGroupsSummary.total_budgeted?.toLocaleString() || '0'}
+                    <CurrencyAmountDisplay
+                      amount={budgetGroupsSummary.total_budgeted}
+                      currency={budgetGroups[0]?.currency || 'EUR'}
+                      showCurrencyCode={true}
+                    />
                   </p>
                 </div>
               </div>
