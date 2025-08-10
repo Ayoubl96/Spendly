@@ -31,12 +31,7 @@ services:
         - REACT_APP_UPLOAD_URL=/uploads
     container_name: spendly-frontend
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+
 
   # Backend Service  
   backend:
@@ -69,12 +64,7 @@ services:
       database:
         condition: service_healthy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+
 
   # Nginx - Start AFTER frontend and backend are healthy
   nginx:
@@ -84,10 +74,8 @@ services:
       - "8080:80"
     restart: unless-stopped
     depends_on:
-      frontend:
-        condition: service_healthy
-      backend:
-        condition: service_healthy
+      - frontend
+      - backend
     volumes:
       - /opt/spendly/data/nginx-logs:/var/log/nginx
     command: >
