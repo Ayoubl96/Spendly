@@ -12,7 +12,6 @@ import {
   Calendar, 
   Target, 
   ArrowLeft,
-  Settings
 } from 'lucide-react'
 import { CurrencyAmountDisplay } from '../../components/ui/currency-amount-display'
 
@@ -162,7 +161,7 @@ export function BudgetOverviewPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <Settings className="w-8 h-8 text-purple-600" />
+                <Target className="w-8 h-8 text-purple-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Budget</p>
                   <p className="text-2xl font-bold">
