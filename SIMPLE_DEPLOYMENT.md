@@ -86,11 +86,11 @@ sudo chown -R 1000:1000 /opt/spendly/data
 ### **If frontend can't reach backend:**
 1. **Check CORS settings**: Ensure `CORS_ORIGIN` matches frontend URL
 2. **Verify network**: Both containers should be on same Docker network
-3. **Test backend directly**: `curl http://your-server:8000/api/v1/health`
+3. **Test backend directly**: `curl http://your-server:8001/api/v1/health`
 
 ### **Common Issues:**
-- **Port conflicts**: Make sure ports 3000 and 8000 aren't used by other services
-- **Firewall**: Ensure ports 3000 and 8000 are open on your server
+- **Port conflicts**: Make sure ports 3001 and 8001 aren't used by other services
+- **Firewall**: Ensure ports 3001 and 8001 are open on your server
 - **IP address**: Use actual server IP, not localhost, in environment variables
 
 ## 🎉 **Benefits of This Approach:**
@@ -107,7 +107,7 @@ If you were using the nginx version:
 1. **Stop the old stack** in Portainer
 2. **Deploy this simple version**
 3. **Update your bookmarks** to new URLs:
-   - Old: `http://server:8090` → New: `http://server:3000`
-   - Old: `http://server:8090/api` → New: `http://server:8000/api/v1`
+   - Old: `http://server:8090` → New: `http://server:3001`
+   - Old: `http://server:8090/api` → New: `http://server:8001/api/v1`
 
 **This version is much more reliable and easier to manage!** 🚀
