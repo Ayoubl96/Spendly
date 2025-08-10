@@ -93,7 +93,7 @@ services:
     image: nginx:1.24-alpine
     container_name: spendly-nginx
     ports:
-      - "8080:80"
+      - "8090:80"
     restart: unless-stopped
     volumes:
       - /opt/spendly/data/nginx-logs:/var/log/nginx
@@ -176,7 +176,7 @@ services:
     image: uozi/nginx-ui:latest
     container_name: spendly-nginx-ui
     ports:
-      - "8081:80"
+      - "8091:80"
     restart: unless-stopped
     volumes:
       - /opt/spendly/data/nginx-logs:/var/log/nginx:ro

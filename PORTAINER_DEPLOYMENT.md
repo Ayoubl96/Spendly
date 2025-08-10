@@ -72,18 +72,18 @@ BCRYPT_ROUNDS=12
    - Deploy the stack
 
 2. **Access Points**:
-   - **Application**: `http://your-server:8080`
-   - **Nginx UI**: `http://your-server:8081`
+   - **Application**: `http://your-server:8090`
+   - **Nginx UI**: `http://your-server:8091`
    - **Health checks**:
-     - `http://your-server:8080/nginx-health`
-     - `http://your-server:8080/nginx-status`
+     - `http://your-server:8090/nginx-health`
+     - `http://your-server:8090/nginx-status`
 
 ## Service Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐
 │   Nginx UI      │    │     Nginx       │
-│   Port: 8081    │    │   Port: 8080    │
+│   Port: 8091    │    │   Port: 8090    │
 │   (Monitoring)  │    │ (Reverse Proxy) │
 └─────────────────┘    └─────┬───────────┘
                               │
@@ -114,13 +114,13 @@ docker logs spendly-nginx
 2. **Test individual services**:
 ```bash
 # Test frontend directly
-curl http://localhost:8080/test-frontend
+curl http://localhost:8090/test-frontend
 
 # Test backend directly
-curl http://localhost:8080/test-backend
+curl http://localhost:8090/test-backend
 
 # Check nginx status
-curl http://localhost:8080/nginx-status
+curl http://localhost:8090/nginx-status
 ```
 
 3. **Verify environment variables**:
@@ -143,6 +143,6 @@ docker exec spendly-backend env | grep -E "(JWT_|DB_|POSTGRES_)"
 
 ## Monitoring
 
-- Nginx UI provides real-time monitoring at port 8081
+- Nginx UI provides real-time monitoring at port 8091
 - Application logs are stored in `/opt/spendly/data/logs`
 - Nginx logs are in `/opt/spendly/data/nginx-logs`
