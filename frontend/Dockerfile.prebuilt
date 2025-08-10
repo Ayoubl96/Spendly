@@ -1,0 +1,33 @@
+# Use pre-built React app (built locally)
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install only express for serving
+RUN npm install express
+
+# Copy the server file
+COPY server.js .
+
+# Copy the pre-built React app
+COPY build/ ./build/
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S reactuser -u 1001
+
+# Set permissions
+RUN chown -R reactuser:nodejs /app
+
+# Switch to non-root user
+USER reactuser
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1
+
+# Start the Express server
+CMD ["node", "server.js"]

@@ -1,4 +1,4 @@
-# Spendly Production Stack - Development Server Approach
+# Spendly Production Stack - Pre-built Frontend
 version: '3.8'
 
 services:
@@ -80,18 +80,12 @@ services:
       retries: 3
       start_period: 60s
 
-  # Frontend Service - Using development server (no build required)
+  # Frontend Service - Using pre-built React app
   frontend:
     build:
       context: https://github.com/Ayoubl96/Spendly.git#main:frontend
-      dockerfile: Dockerfile.dev-server
-      args:
-        - REACT_APP_API_URL=${BACKEND_URL:-http://localhost:9000}/api/v1
-        - REACT_APP_UPLOAD_URL=${BACKEND_URL:-http://localhost:9000}/uploads
+      dockerfile: Dockerfile.prebuilt
     container_name: spendly-frontend
-    environment:
-      - REACT_APP_API_URL=${BACKEND_URL:-http://localhost:9000}/api/v1
-      - REACT_APP_UPLOAD_URL=${BACKEND_URL:-http://localhost:9000}/uploads
     ports:
       - "4000:3000"  # External:Internal - frontend serves on port 3000
     restart: unless-stopped
@@ -100,6 +94,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 30s
     depends_on:
       - backend
