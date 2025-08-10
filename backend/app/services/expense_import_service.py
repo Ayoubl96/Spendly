@@ -25,9 +25,24 @@ class ExpenseImportService:
     
     def detect_file_format(self, file_path: str, file_content: bytes = None) -> str:
         """Detect bank file format based on content"""
-        # For now, we'll focus on the Intesa San Paolo format we analyzed
-        # This can be extended to support other banks
-        return "intesa_sanpaolo"
+        if file_path.lower().endswith('.csv'):
+            # Try to detect CSV format by reading first few lines
+            try:
+                df_sample = pd.read_csv(file_path, nrows=5)
+                columns = [col.lower() for col in df_sample.columns]
+                
+                # Check for activity.csv format (Data, Descrizione, Importo)
+                if any('data' in col for col in columns) and any('descrizione' in col for col in columns) and any('importo' in col for col in columns):
+                    return "activity_csv"
+                
+                # Add more CSV format detection here in the future
+                return "generic_csv"
+                
+            except Exception:
+                return "unknown_csv"
+        else:
+            # Excel file - check for Intesa San Paolo format
+            return "intesa_sanpaolo"
     
     def parse_intesa_sanpaolo_file(self, file_path: str) -> List[Dict[str, Any]]:
         """Parse Intesa San Paolo Excel file format"""
@@ -86,6 +101,144 @@ class ExpenseImportService:
         except Exception as e:
             logger.error(f"Error parsing Intesa San Paolo file: {e}")
             raise ValueError(f"Failed to parse file: {e}")
+    
+    def parse_activity_csv_file(self, file_path: str) -> List[Dict[str, Any]]:
+        """Parse activity.csv format (Data, Descrizione, Importo)"""
+        try:
+            # Read CSV file
+            df = pd.read_csv(file_path)
+            
+            # Validate required columns
+            required_columns = ['Data', 'Descrizione', 'Importo']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                raise ValueError(f"Missing required columns: {missing_columns}")
+            
+            expenses = []
+            
+            for _, row in df.iterrows():
+                # Skip invalid rows
+                if pd.isna(row['Data']) or pd.isna(row['Descrizione']) or pd.isna(row['Importo']):
+                    continue
+                
+                # Convert European number format (comma as decimal separator)
+                try:
+                    amount_str = str(row['Importo']).replace(',', '.')
+                    amount = float(amount_str)
+                except (ValueError, TypeError):
+                    logger.warning(f"Could not parse amount: {row['Importo']}")
+                    continue
+                
+                # Skip credits (negative amounts) as per requirements
+                if amount < 0:
+                    continue
+                
+                # Skip banking operations
+                description = str(row['Descrizione']).upper()
+                if any(skip_type in description for skip_type in [
+                    'ADDEBITO IN C/C',
+                    'IMPOSTA DI BOLLO',
+                    'COMMISSIONI'
+                ]):
+                    continue
+                
+                # Extract expense data
+                expense_data = self._extract_expense_data_activity_csv(row, amount)
+                if expense_data:
+                    expenses.append(expense_data)
+            
+            return expenses
+            
+        except Exception as e:
+            logger.error(f"Error parsing activity CSV file: {e}")
+            raise ValueError(f"Failed to parse CSV file: {e}")
+    
+    def _extract_expense_data_activity_csv(self, row, amount: float) -> Optional[Dict[str, Any]]:
+        """Extract normalized expense data from activity CSV row"""
+        try:
+            description = str(row['Descrizione']).strip()
+            
+            # Extract vendor using CSV-specific patterns
+            vendor = self._extract_vendor_activity_csv(description)
+            
+            # Infer payment method (mostly card for this type of data)
+            payment_method = self._infer_payment_method_activity_csv(description)
+            
+            # Parse date (MM/DD/YYYY format)
+            try:
+                expense_date = pd.to_datetime(row['Data'], format='%m/%d/%Y').date()
+            except Exception:
+                logger.warning(f"Could not parse date: {row['Data']}")
+                return None
+            
+            # Generate unique ID for deduplication
+            unique_id = self._generate_expense_hash(
+                expense_date, amount, vendor or '', description
+            )
+            
+            return {
+                'unique_id': unique_id,
+                'expense_date': expense_date.isoformat(),
+                'amount': amount,
+                'currency': 'EUR',  # Assuming EUR for this CSV format
+                'description': description,
+                'vendor': vendor,
+                'payment_method': payment_method,
+                'notes': description,  # Use full description as notes
+                'raw_data': {
+                    'source': 'activity_csv',
+                    'original_amount': str(row['Importo']),
+                    'original_date': str(row['Data'])
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error extracting expense data from CSV: {e}")
+            return None
+    
+    def _extract_vendor_activity_csv(self, description: str) -> Optional[str]:
+        """Extract vendor name from activity CSV description"""
+        if not description:
+            return None
+        
+        description = description.strip()
+        
+        # Pattern 1: PayPal transactions - "PAYPAL *VENDOR_NAME ..."
+        if description.upper().startswith('PAYPAL *'):
+            parts = description.split('PAYPAL *')[1].split()
+            if parts:
+                vendor = parts[0].strip()
+                # Clean up common PayPal vendor patterns
+                if vendor.endswith('APP'):
+                    vendor = vendor[:-3]  # Remove 'APP' suffix
+                return vendor[:50] if vendor else None
+        
+        # Pattern 2: Service providers - "SERVICE.IO transaction_id LOCATION"
+        if '.IO ' in description.upper():
+            vendor = description.split()[0].strip()
+            return vendor[:50] if vendor else None
+        
+        # Pattern 3: Direct merchants - "VENDOR_NAME LOCATION"
+        parts = description.split()
+        if parts:
+            # Take the first word/part as vendor name
+            vendor = parts[0].strip()
+            # Filter out transaction IDs and codes
+            if len(vendor) > 2 and not vendor.isdigit():
+                return vendor[:50]
+        
+        return None
+    
+    def _infer_payment_method_activity_csv(self, description: str) -> str:
+        """Infer payment method from activity CSV description"""
+        description_upper = description.upper()
+        
+        if 'PAYPAL' in description_upper:
+            return 'other'  # PayPal transactions
+        elif any(keyword in description_upper for keyword in ['CARD', 'POS']):
+            return 'card'
+        else:
+            return 'card'  # Default for this type of data (likely card transactions)
     
     def _extract_expense_data_intesa(self, row) -> Optional[Dict[str, Any]]:
         """Extract normalized expense data from Intesa San Paolo row"""
@@ -245,28 +398,37 @@ class ExpenseImportService:
         # Define heuristic mappings (these could be moved to a config file)
         heuristics = [
             # Food & Dining
-            (['pizz', 'ristorante', 'bar', 'cafe', 'pizza', 'piadineria', 'mc donald', 'burger'], 'Food & Dining', 80),
+            (['pizz', 'ristorante', 'bar', 'cafe', 'pizza', 'piadineria', 'mc donald', 'burger', 'deliveroo', 'glovo', 'billy tacos'], 'Food & Dining', 85),
+            
+            # Entertainment & Subscriptions
+            (['netflix', 'youtube', 'spotify', 'apple.com', 'itunesappst', 'twitchinter', 'priority pass'], 'Entertainment', 90),
+            
+            # Sports & Fitness  
+            (['sport', 'gym', 'fitness', 'palestra', 'playtomic'], 'Sports & Fitness', 90),
             
             # Transportation
             (['uber', 'taxi', 'bus', 'metro', 'train', 'benzina', 'eni', 'esso', 'shell'], 'Transportation', 75),
             
-            # Shopping
-            (['amazon', 'shopping', 'store', 'negozio', 'market'], 'Shopping', 70),
+            # Shopping & Retail
+            (['amazon', 'shopping', 'store', 'negozio', 'market', 'tempur'], 'Shopping', 75),
+            
+            # Technology & Software
+            (['google', 'microsoft', 'adobe', 'nordsec', 'support@beamjobs'], 'Technology', 80),
             
             # Telecommunications
             (['iliad', 'tim', 'vodafone', 'wind', 'telefon', 'internet'], 'Telecommunications', 85),
             
-            # Travel
-            (['hotel', 'hostel', 'booking', 'airbnb', 'flight', 'aeroporto'], 'Travel & Accommodation', 80),
+            # Travel & Accommodation
+            (['hotel', 'hostel', 'booking', 'airbnb', 'flight', 'aeroporto'], 'Travel', 80),
             
             # Financial Services
             (['bank', 'revolut', 'paypal', 'credit', 'prestito'], 'Financial Services', 75),
             
-            # Sports & Fitness
-            (['sport', 'gym', 'fitness', 'palestra'], 'Sports & Fitness', 80),
-            
-            # Health
+            # Health & Medical
             (['farmacia', 'pharmacy', 'medic', 'hospital', 'clinic'], 'Health & Medical', 85),
+            
+            # Personal Services
+            (['pickedgroup', 'marcofincato'], 'Personal Services', 70),
         ]
         
         combined_text = f"{vendor} {description}"
@@ -296,8 +458,10 @@ class ExpenseImportService:
         
         if file_format == "intesa_sanpaolo":
             return self.parse_intesa_sanpaolo_file(file_path)
+        elif file_format == "activity_csv":
+            return self.parse_activity_csv_file(file_path)
         else:
-            raise ValueError(f"Unsupported file format: {file_format}")
+            raise ValueError(f"Unsupported file format: {file_format}. Supported formats: Excel (Intesa San Paolo), CSV (Activity format)")
     
     def preview_import(
         self, 

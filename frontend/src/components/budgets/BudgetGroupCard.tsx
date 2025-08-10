@@ -3,11 +3,12 @@ import { Card } from '../ui/card'
 import { Button } from '../ui/button'
 import { CircularProgress } from '../ui/circular-progress'
 import { CurrencyAmountDisplay } from '../ui/currency-amount-display'
-import { BudgetGroup, BudgetGroupSummary } from '../../types/api.types'
+import { BudgetGroup, BudgetSummary } from '../../types/api.types'
+import { Badge, CalendarIcon, PencilIcon, TrashIcon } from 'lucide-react'
 
 interface BudgetGroupCardProps {
   budgetGroup: BudgetGroup
-  summary?: BudgetGroupSummary
+  budgetSummary: BudgetSummary | null
   onView?: () => void
   onEdit?: () => void
   onDelete?: () => void
@@ -16,7 +17,7 @@ interface BudgetGroupCardProps {
 
 const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
   budgetGroup,
-  summary,
+  budgetSummary,
   onView,
   onEdit,
   onDelete,
@@ -65,40 +66,23 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
 
   return (
     <Card 
-      className={`p-6 hover:shadow-lg transition-shadow cursor-pointer ${
+      className={`py-12 px-5 hover:shadow-lg transition-shadow cursor-pointer relative ${
         isCurrentPeriod() ? 'ring-2 ring-blue-500 ring-opacity-20' : ''
       }`}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {budgetGroup.name}
-            </h3>
-            {isCurrentPeriod() && (
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                Current
-              </span>
-            )}
-            {summary && (
-              <span className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(summary.status)}`}>
-                {summary.status.replace('_', ' ').toUpperCase()}
-              </span>
-            )}
-          </div>
-          
-          {budgetGroup.description && (
-            <p className="text-sm text-gray-600 mb-2">
-              {budgetGroup.description}
-            </p>
+      <div className="flex items-center justify-between absolute top-2 left-2 right-2">
+        <div className="flex items-center gap-2">
+          {isCurrentPeriod() && (
+            <Card className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+              Current Period
+            </Card>
           )}
-          
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span className="capitalize">{budgetGroup.periodType}</span>
-            <span>•</span>
-            <span>{formatDate(budgetGroup.startDate)} - {formatDate(budgetGroup.endDate)}</span>
-          </div>
+          {budgetSummary && (
+            <Card className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(budgetSummary.overall_status)}`}>
+              {budgetSummary.overall_status.replace('_', ' ').toUpperCase()}
+            </Card>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -111,7 +95,7 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
                 onEdit()
               }}
             >
-              Edit
+              <PencilIcon className="w-4 h-4" />
             </Button>
           )}
           {onDelete && (
@@ -124,13 +108,35 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
               }}
               className="text-red-600 hover:text-red-700"
             >
-              Delete
+              <TrashIcon className="w-4 h-4" />
             </Button>
           )}
         </div>
       </div>
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {budgetGroup.name}
+            </h3>
+          </div>
+          
+          {budgetGroup.description && (
+            <p className="text-sm text-gray-600 mb-2">
+              {budgetGroup.description}
+            </p>
+          )}
+          
+          <div className="flex items-center gap-4 text-xs text-gray-500">
+            <span className="text-xs text-gray-500 flex items-center gap-1">
+              <CalendarIcon className="w-4 h-4" />
+              {budgetGroup.periodType} - {formatDate(budgetGroup.startDate)} - {formatDate(budgetGroup.endDate)}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      {summary ? (
+      {budgetSummary ? (
         <div className="space-y-4">
           {/* Financial Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -138,7 +144,7 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
               <div className="text-sm text-gray-500 mb-1">Total Budget</div>
               <div className="text-lg font-semibold">
                 <CurrencyAmountDisplay
-                  amount={summary.total_budgeted}
+                  amount={budgetSummary.total_budget}
                   currency={budgetGroup.currency}
                 />
               </div>
@@ -146,9 +152,9 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
             
             <div className="text-center">
               <div className="text-sm text-gray-500 mb-1">Spent</div>
-              <div className={`text-lg font-semibold ${getStatusColor(summary.status)}`}>
+              <div className={`text-lg font-semibold ${getStatusColor(budgetSummary.overall_status)}`}>
                 <CurrencyAmountDisplay
-                  amount={summary.total_spent}
+                  amount={budgetSummary.total_spent}
                   currency={budgetGroup.currency}
                 />
               </div>
@@ -158,7 +164,7 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
               <div className="text-sm text-gray-500 mb-1">Remaining</div>
               <div className="text-lg font-semibold">
                 <CurrencyAmountDisplay
-                  amount={summary.total_remaining}
+                  amount={budgetSummary.total_remaining}
                   currency={budgetGroup.currency}
                 />
               </div>
@@ -168,49 +174,50 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
           {/* Progress Circle */}
           <div className="flex justify-center">
             <CircularProgress
-              percentage={summary.percentage_used}
+              percentage={budgetSummary.overall_percentage}
               size={80}
               strokeWidth={8}
-              status={summary.status}
+              status={budgetSummary.overall_status}
             />
           </div>
 
           {/* Budget Count */}
           <div className="text-center text-sm text-gray-500">
-            {summary.budget_count} {summary.budget_count === 1 ? 'budget' : 'budgets'}
+            {budgetSummary.budget_count} {budgetSummary.budget_count === 1 ? 'budget' : 'budgets'}
           </div>
 
           {/* Category Breakdown Preview */}
-          {Object.keys(summary.category_summaries).length > 0 && (
+          {Object.keys(budgetSummary.budgets).length > 0 && (
             <div className="pt-4 border-t">
               <div className="text-sm font-medium text-gray-700 mb-2">Categories</div>
               <div className="space-y-1">
-                {Object.entries(summary.category_summaries).slice(0, 3).map(([categoryName, categorySummary]) => (
-                  <div key={categoryName} className="flex justify-between text-sm">
-                    <span className="text-gray-600">{categoryName}</span>
+                {Object.entries(budgetSummary.budgets).slice(0, 3).map(([budgetId, budget]) => (
+                  <div key={budget.name} className="flex justify-between text-sm">
+                    <span className="text-gray-600">{budget.name}</span>
                     <span className="font-medium">
                       <CurrencyAmountDisplay
-                        amount={categorySummary.spent}
+                        amount={budget.spent}
                         currency={budgetGroup.currency}
                       />
                       {' / '}
                       <CurrencyAmountDisplay
-                        amount={categorySummary.budgeted}
+                        amount={budget.amount}
                         currency={budgetGroup.currency}
                       />
                     </span>
                   </div>
                 ))}
-                {Object.keys(summary.category_summaries).length > 3 && (
+                {Object.keys(budgetSummary.budgets).length > 3 && (
                   <div className="text-xs text-gray-500 text-center pt-1">
-                    +{Object.keys(summary.category_summaries).length - 3} more categories
+                    +{Object.keys(budgetSummary.budgets).length - 3} more categories
                   </div>
                 )}
               </div>
             </div>
           )}
-        </div>
+        </div>        
       ) : (
+
         <div className="space-y-4">
           <div className="text-center text-gray-500">
             <div className="text-sm">Currency: {budgetGroup.currency}</div>

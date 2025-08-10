@@ -82,10 +82,11 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
           </div>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-900">Supported Formats</h3>
-            <p className="text-sm text-blue-700 mt-1">
-              Currently supported: Intesa San Paolo Excel exports. 
-              More banks will be added soon.
-            </p>
+            <div className="text-sm text-blue-700 mt-1 space-y-1">
+              <p>• <strong>Excel:</strong> Intesa San Paolo bank exports (.xlsx, .xls)</p>
+              <p>• <strong>CSV:</strong> Activity format with columns: Data, Descrizione, Importo</p>
+              <p className="text-blue-600">More banks and formats will be added soon.</p>
+            </div>
           </div>
         </div>
       </Card>
@@ -192,9 +193,10 @@ export const FileUploadStep: React.FC<FileUploadStepProps> = ({
       <div className="mt-8 space-y-4 text-sm text-gray-600">
         <h3 className="font-medium text-gray-900">Instructions:</h3>
         <ol className="list-decimal list-inside space-y-2 pl-4">
-          <li>Download your bank statement in Excel or CSV format</li>
+          <li>Download your bank statement in Excel (.xlsx) or CSV format</li>
+          <li>For CSV: ensure columns are named Data, Descrizione, Importo</li>
           <li>Upload the file using the area above</li>
-          <li>Review and edit the detected transactions</li>
+          <li>Review and edit the detected transactions with category/subcategory</li>
           <li>Confirm the import to add expenses to your account</li>
         </ol>
         

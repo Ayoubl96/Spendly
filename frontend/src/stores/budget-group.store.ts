@@ -8,7 +8,8 @@ import {
   UpdateBudgetGroupRequest,
   Budget,
   GenerateBudgetsRequest,
-  BulkBudgetsUpdateRequest
+  BulkBudgetsUpdateRequest,
+  BudgetSummary
 } from '../types/api.types'
 import { apiService } from '../services/api.service'
 
@@ -19,6 +20,7 @@ export interface BudgetGroupFilters {
 }
 
 interface BudgetGroupState {
+  BudgetSummary: BudgetSummary | null
   budgetGroups: BudgetGroup[]
   currentBudgetGroup: BudgetGroupWithBudgets | null
   budgetGroupSummary: BudgetGroupSummary | null
@@ -29,6 +31,7 @@ interface BudgetGroupState {
   error: string | null
   
   // Actions
+  fetchBudgetSummary: () => Promise<void>
   fetchBudgetGroups: () => Promise<void>
   fetchCurrentBudgetGroups: () => Promise<void>
   fetchBudgetGroupsSummary: (includeInactive?: boolean) => Promise<void>
@@ -58,6 +61,16 @@ const initialFilters: BudgetGroupFilters = {
 }
 
 export const useBudgetGroupStore = create<BudgetGroupState>((set, get) => ({
+  BudgetSummary: {
+    total_budget: 0,
+    total_spent: 0,
+    total_remaining: 0,
+    overall_percentage: 0,
+    overall_status: 'on_track',
+    budget_count: 0,
+    status_counts: {},
+    budgets: [],
+  },
   budgetGroups: [],
   currentBudgetGroup: null,
   budgetGroupSummary: null,
@@ -66,6 +79,16 @@ export const useBudgetGroupStore = create<BudgetGroupState>((set, get) => ({
   filters: initialFilters,
   isLoading: false,
   error: null,
+
+  fetchBudgetSummary: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const summary = await apiService.getBudgetSummary()
+      set({ BudgetSummary: summary })
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to fetch budget summary' })
+    }
+  },
 
   fetchBudgetGroups: async () => {
     set({ isLoading: true, error: null })
@@ -348,5 +371,5 @@ export const useBudgetGroupStore = create<BudgetGroupState>((set, get) => ({
   getBudgetGroupsByPeriod: (periodType: string) => {
     const { budgetGroups } = get()
     return budgetGroups.filter(bg => bg.periodType === periodType && bg.isActive)
-  },
+  },  
 }))

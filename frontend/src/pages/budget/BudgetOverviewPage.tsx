@@ -22,10 +22,12 @@ export function BudgetOverviewPage() {
   
   // Budget Groups Store
   const {
+    BudgetSummary,
     budgetGroups,
     budgetGroupsSummary,
     isLoading: isGroupsLoading,
     error: groupsError,
+    fetchBudgetSummary,
     fetchBudgetGroups,
     fetchCurrentBudgetGroups,
     fetchBudgetGroupsSummary,
@@ -46,6 +48,7 @@ export function BudgetOverviewPage() {
 
   // Initialize data
   useEffect(() => {
+    fetchBudgetSummary()
     fetchBudgetGroups()
     fetchCurrentBudgetGroups()
     fetchBudgetGroupsSummary()
@@ -58,7 +61,7 @@ export function BudgetOverviewPage() {
     fetchBudgetGroupsSummary,
     fetchCategories,
     fetchCategoryTree,
-    fetchCurrencies
+    fetchCurrencies,
   ])
 
   // Clear errors on mount
@@ -186,6 +189,7 @@ export function BudgetOverviewPage() {
                   key={group.id}
                   budgetGroup={group}
                   onClick={() => navigate(`/budget/manage/${group.id}`)}
+                  budgetSummary={BudgetSummary} 
                   onEdit={() => {
                     setSelectedBudgetGroup(group)
                     setViewMode('edit-group')
@@ -215,6 +219,7 @@ export function BudgetOverviewPage() {
                 <BudgetGroupCard
                   key={group.id}
                   budgetGroup={group}
+                  budgetSummary={BudgetSummary}
                   onClick={() => navigate(`/budget/manage/${group.id}`)}
                   onEdit={() => {
                     setSelectedBudgetGroup(group)
