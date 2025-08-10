@@ -1,0 +1,25 @@
+# Minimal Spendly Stack - Start with Basic Nginx
+version: '3.8'
+
+services:
+  # Nginx - Start simple, then add complexity
+  nginx:
+    image: nginx:1.24-alpine
+    container_name: spendly-nginx
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    # NO CUSTOM COMMAND - Use default nginx first
+
+  # Database only for now
+  database:
+    image: postgres:15-alpine
+    container_name: spendly-database
+    environment:
+      - POSTGRES_DB=spendly_prod
+      - POSTGRES_USER=spendly_user
+      - POSTGRES_PASSWORD=88gv^rt8Lkv&&ffNrwy2iV
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - /opt/spendly/data/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
