@@ -19,9 +19,9 @@ Edit `portainer-simple.env` and replace `YOUR_SERVER_IP` with your actual server
 
 ```env
 # Replace with your actual server IP
-FRONTEND_URL=http://192.168.1.100:3000
-BACKEND_URL=http://192.168.1.100:8000
-CORS_ORIGIN=http://192.168.1.100:3000
+FRONTEND_URL=http://192.168.1.100:3001
+BACKEND_URL=http://192.168.1.100:8001
+CORS_ORIGIN=http://192.168.1.100:3001
 ```
 
 ### 2. **Create Directories** (Optional - handled automatically)
@@ -41,21 +41,21 @@ sudo chown -R 1000:1000 /opt/spendly/data
 ## 🌐 **Access Your Application:**
 
 ### **Direct Service Access:**
-- **🎨 Frontend (React App)**: `http://your-server-ip:3000`
-- **🔧 Backend API**: `http://your-server-ip:8000`
-- **📊 API Documentation**: `http://your-server-ip:8000/docs`
+- **🎨 Frontend (React App)**: `http://your-server-ip:3001`
+- **🔧 Backend API**: `http://your-server-ip:8001`
+- **📊 API Documentation**: `http://your-server-ip:8001/docs`
 - **💾 Database**: Internal only (no external access)
 
 ### **Health Checks:**
-- **Backend Health**: `http://your-server-ip:8000/api/v1/health`
-- **Frontend Health**: `http://your-server-ip:3000/health`
+- **Backend Health**: `http://your-server-ip:8001/api/v1/health`
+- **Frontend Health**: `http://your-server-ip:3001/health`
 
 ## 📊 **Service Architecture:**
 
 ```
 ┌─────────────────┐    ┌─────────────────┐
 │    Frontend     │    │    Backend      │
-│   Port: 3000    │    │   Port: 8000    │
+│   Port: 3001    │    │   Port: 8001    │
 │   (React App)   │    │   (Python API)  │
 └─────────────────┘    └─────┬───────────┘
                               │
@@ -69,12 +69,12 @@ sudo chown -R 1000:1000 /opt/spendly/data
 ## 🔧 **Configuration:**
 
 ### **Frontend Build Args:**
-- API calls go directly to: `http://your-server:8000/api/v1`
-- File uploads go to: `http://your-server:8000/uploads`
+- API calls go directly to: `http://your-server:8001/api/v1`
+- File uploads go to: `http://your-server:8001/uploads`
 
 ### **Backend CORS:**
-- Configured to accept requests from frontend on port 3000
-- API accessible on port 8000
+- Configured to accept requests from frontend on port 3001
+- API accessible on port 8001
 
 ## 🆘 **Troubleshooting:**
 
