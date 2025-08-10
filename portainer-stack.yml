@@ -80,15 +80,18 @@ services:
       retries: 3
       start_period: 60s
 
-  # Frontend Service - Using port 3001 to avoid conflicts
+  # Frontend Service - Using port 4000
   frontend:
     build:
       context: https://github.com/Ayoubl96/Spendly.git#main:frontend
       dockerfile: Dockerfile.prod
       args:
-        - REACT_APP_API_URL=http://localhost:9000/api/v1
-        - REACT_APP_UPLOAD_URL=http://localhost:9000/uploads
+        - REACT_APP_API_URL=${BACKEND_URL:-http://localhost:9000}/api/v1
+        - REACT_APP_UPLOAD_URL=${BACKEND_URL:-http://localhost:9000}/uploads
     container_name: spendly-frontend
+    environment:
+      - REACT_APP_API_URL=${BACKEND_URL:-http://localhost:9000}/api/v1
+      - REACT_APP_UPLOAD_URL=${BACKEND_URL:-http://localhost:9000}/uploads
     ports:
       - "4000:80"  # External:Internal - using port 4000 for frontend
     restart: unless-stopped
