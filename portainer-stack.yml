@@ -66,7 +66,7 @@ services:
     restart: unless-stopped
 
 
-  # Nginx - Reverse Proxy (starts independently)
+  # Nginx - Independent Reverse Proxy
   nginx:
     image: nginx:1.24-alpine
     container_name: spendly-nginx
@@ -75,56 +75,125 @@ services:
     restart: unless-stopped
     volumes:
       - /opt/spendly/data/nginx-logs:/var/log/nginx
+      - /opt/spendly/data/nginx-config:/etc/nginx/conf.d
+    environment:
+      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
     command: >
       sh -c '
-        echo "Creating nginx configuration..." &&
+        echo "🚀 Starting Independent Nginx..." &&
+        mkdir -p /var/log/nginx &&
         cat > /etc/nginx/conf.d/default.conf << "EOF"
       server {
           listen 80;
           server_name _;
           client_max_body_size 50m;
+          access_log /var/log/nginx/access.log;
+          error_log /var/log/nginx/error.log;
           
-          location /health {
-              return 200 "nginx healthy\\n";
+          # Health check endpoint
+          location /nginx-health {
+              return 200 "{\\"status\\": \\"healthy\\", \\"timestamp\\": \\"$(date)\\", \\"server\\": \\"spendly-nginx\\"}";
+              add_header Content-Type application/json;
+          }
+          
+          # Status endpoint with upstream info
+          location /nginx-status {
+              return 200 "<!DOCTYPE html><html><head><title>Nginx Status</title></head><body><h1>Spendly Nginx Status</h1><p>Status: ✅ Running</p><p>Time: $(date)</p><p>Container: spendly-nginx</p><h2>Upstream Status:</h2><ul><li>Frontend: <a href=\\"/test-frontend\\">/test-frontend</a></li><li>Backend: <a href=\\"/test-backend\\">/test-backend</a></li></ul><h2>Links:</h2><ul><li><a href=\\"/\\">Frontend App</a></li><li><a href=\\"/api/docs\\">Backend API Docs</a></li><li><a href=\\"/nginx-health\\">Health Check</a></li></ul></body></html>";
+              add_header Content-Type text/html;
+          }
+          
+          # Test endpoints for debugging
+          location /test-frontend {
+              proxy_pass http://spendly-frontend:80;
+              proxy_connect_timeout 2s;
+              proxy_read_timeout 5s;
+              error_page 502 504 /frontend-down.html;
+          }
+          
+          location /test-backend {
+              proxy_pass http://spendly-backend:8000;
+              proxy_connect_timeout 2s;
+              proxy_read_timeout 5s;
+              error_page 502 504 /backend-down.html;
+          }
+          
+          # Error pages for debugging
+          location = /frontend-down.html {
+              return 503 "Frontend container not available (spendly-frontend:80)";
               add_header Content-Type text/plain;
           }
           
+          location = /backend-down.html {
+              return 503 "Backend container not available (spendly-backend:8000)";
+              add_header Content-Type text/plain;
+          }
+          
+          # Production routes
           location /api/ {
               proxy_pass http://spendly-backend:8000;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_connect_timeout 5s;
+              proxy_set_header Host $$host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_connect_timeout 10s;
               proxy_send_timeout 60s;
               proxy_read_timeout 60s;
+              
+              # Graceful error handling
+              error_page 502 504 = @backend_error;
           }
           
           location /uploads/ {
               proxy_pass http://spendly-backend:8000;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_connect_timeout 5s;
+              proxy_set_header Host $$host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_connect_timeout 10s;
               proxy_send_timeout 60s;
               proxy_read_timeout 60s;
+              error_page 502 504 = @backend_error;
           }
           
           location / {
               proxy_pass http://spendly-frontend:80;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_connect_timeout 5s;
+              proxy_set_header Host $$host;
+              proxy_set_header X-Real-IP $$remote_addr;
+              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $$scheme;
+              proxy_connect_timeout 10s;
               proxy_send_timeout 60s;
               proxy_read_timeout 60s;
+              
+              # Graceful error handling
+              error_page 502 504 = @frontend_error;
+          }
+          
+          # Error handlers
+          location @backend_error {
+              return 503 "Backend service temporarily unavailable. Please try again later.";
+              add_header Content-Type text/plain;
+          }
+          
+          location @frontend_error {
+              return 503 "Frontend service temporarily unavailable. Please try again later.";
+              add_header Content-Type text/plain;
           }
       }
       EOF
-        echo "Configuration created. Testing..." &&
-        if nginx -t; then
-            echo "Config valid. Starting nginx..." &&
-            exec nginx -g "daemon off;"
-        else
-            echo "Config invalid! Showing errors:" &&
-            nginx -t &&
-            echo "Sleeping to prevent restart loop..." &&
-            sleep 3600
-        fi
+        echo "✅ Configuration created. Testing..." &&
+        nginx -t &&
+        echo "✅ Configuration valid. Starting Nginx..." &&
+        exec nginx -g "daemon off;"
       '
+
+  # Nginx UI - Web interface for monitoring
+  nginx-ui:
+    image: uozi/nginx-ui:latest
+    container_name: spendly-nginx-ui
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+    volumes:
+      - /opt/spendly/data/nginx-logs:/var/log/nginx:ro
+      - /opt/spendly/data/nginx-config:/etc/nginx/conf.d:ro
+    environment:
+      - NGINX_LOG_DIR=/var/log/nginx
