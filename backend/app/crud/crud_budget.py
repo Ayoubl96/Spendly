@@ -205,6 +205,7 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
         elif overall_percentage >= 80:  # Default warning threshold
             overall_status = "warning"
         
+        
         return {
             "total_budget": total_budget,
             "total_spent": total_spent,
@@ -213,8 +214,7 @@ class CRUDBudget(CRUDBase[Budget, BudgetCreate, BudgetUpdate]):
             "overall_status": overall_status,
             "budget_count": len(current_budgets),
             "status_counts": status_counts,
-            "budgets": budget_performances,
-            "category_id": current_budgets[0].category_id
+            "budgets": budget_performances
         }
     
     def get_by_category(
