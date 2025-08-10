@@ -36,6 +36,7 @@ xlsxwriter==3.1.9
 # Email
 fastapi-mail==1.4.1
 jinja2==3.1.2
+email-validator==2.1.0
 
 # Utilities
 python-dateutil==2.8.2
