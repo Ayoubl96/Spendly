@@ -14,6 +14,9 @@ COPY package*.json ./
 # Install all dependencies (both production and dev for build)
 RUN npm ci --no-audit
 
+# Install express for serving static files
+RUN npm install express
+
 # Copy source code
 COPY . .
 
@@ -23,18 +26,14 @@ ARG REACT_APP_UPLOAD_URL=/uploads
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 ENV REACT_APP_UPLOAD_URL=$REACT_APP_UPLOAD_URL
 
-# Build with detailed error handling
-RUN echo "Starting React build..." && \
-    npm run build 2>&1 | tee build.log && \
-    echo "Build completed successfully" && \
-    ls -la build/ && \
-    echo "Checking for index.html..." && \
-    ls -la build/index.html && \
-    echo "Build directory contents verified" || \
-    (echo "❌ Build failed! Error details:" && cat build.log && exit 1)
+# Build React application
+RUN echo "Starting React build..." && npm run build
 
-# Install express for serving static files
-RUN npm install express
+# Verify build output
+RUN echo "Verifying build output..." && \
+    ls -la build/ && \
+    test -f build/index.html && \
+    echo "✅ Build verification complete"
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
