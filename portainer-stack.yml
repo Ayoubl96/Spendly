@@ -7,9 +7,9 @@ services:
     image: postgres:15-alpine
     container_name: spendly-database
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-spendly_prod}
-      - POSTGRES_USER=${POSTGRES_USER:-spendly_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${DB_NAME:-spendly_prod}
+      - POSTGRES_USER=${DB_USER:-spendly_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
       - /opt/spendly/data/postgres:/var/lib/postgresql/data
@@ -54,10 +54,10 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-https://spendly.ayoublefhim.com}
       - DB_HOST=spendly-database
       - DB_PORT=5432
-      - DB_NAME=${POSTGRES_DB:-spendly_prod}
-      - DB_USER=${POSTGRES_USER:-spendly_user}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_URL=postgresql://${POSTGRES_USER:-spendly_user}:${POSTGRES_PASSWORD}@spendly-database:5432/${POSTGRES_DB:-spendly_prod}
+      - DB_NAME=${DB_NAME:-spendly_prod}
+      - DB_USER=${DB_USER:-spendly_user}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_URL=postgresql://${DB_USER:-spendly_user}:${DB_PASSWORD}@spendly-database:5432/${DB_NAME:-spendly_prod}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRE=${JWT_EXPIRE:-7d}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
@@ -72,7 +72,23 @@ services:
     restart: unless-stopped
 
 
-  # Nginx - Independent Reverse Proxy
+  # Init container to create directories
+  init-dirs:
+    image: alpine:latest
+    container_name: spendly-init-dirs
+    volumes:
+      - /opt/spendly/data:/data
+    command: >
+      sh -c '
+        echo "🏗️ Creating required directories..." &&
+        mkdir -p /data/postgres /data/uploads /data/logs /data/nginx-logs /data/nginx-config /data/nginx-ui-config /data/nginx-ui-db &&
+        chown -R 82:82 /data/nginx-logs /data/nginx-config 2>/dev/null || true &&
+        chown -R 1000:1000 /data/uploads /data/logs /data/nginx-ui-config /data/nginx-ui-db 2>/dev/null || true &&
+        echo "✅ Directories created successfully"
+      '
+    restart: "no"
+
+  # Nginx - Reverse Proxy
   nginx:
     image: nginx:1.24-alpine
     container_name: spendly-nginx
@@ -81,119 +97,78 @@ services:
     restart: unless-stopped
     volumes:
       - /opt/spendly/data/nginx-logs:/var/log/nginx
-      - /opt/spendly/data/nginx-config:/etc/nginx/conf.d
-    environment:
-      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
     depends_on:
+      init-dirs:
+        condition: service_completed_successfully
       frontend:
         condition: service_healthy
       backend:
         condition: service_started
     command: >
       sh -c '
-        echo "🚀 Starting Independent Nginx..." &&
-        mkdir -p /var/log/nginx &&
-        cat > /etc/nginx/conf.d/default.conf << "EOF"
-        server {
-            listen 80;
-            server_name _;
-            client_max_body_size 50m;
-            access_log /var/log/nginx/access.log;
-            error_log /var/log/nginx/error.log;
-            
-            # Health check endpoint
-            location /nginx-health {
-                return 200 "{\\"status\\": \\"healthy\\", \\"timestamp\\": \\"$(date)\\", \\"server\\": \\"spendly-nginx\\"}";
-                add_header Content-Type application/json;
-            }
-            
-            # Status endpoint with upstream info
-            location /nginx-status {
-                return 200 "<!DOCTYPE html><html><head><title>Nginx Status</title></head><body><h1>Spendly Nginx Status</h1><p>Status: ✅ Running</p><p>Time: $(date)</p><p>Container: spendly-nginx</p><h2>Upstream Status:</h2><ul><li>Frontend: <a href=\\"/test-frontend\\">/test-frontend</a></li><li>Backend: <a href=\\"/test-backend\\">/test-backend</a></li></ul><h2>Links:</h2><ul><li><a href=\\"/\\">Frontend App</a></li><li><a href=\\"/api/docs\\">Backend API Docs</a></li><li><a href=\\"/nginx-health\\">Health Check</a></li></ul></body></html>";
-                add_header Content-Type text/html;
-            }
-            
-            # Test endpoints for debugging
-            location /test-frontend {
-                proxy_pass http://spendly-frontend:80;
-                proxy_connect_timeout 2s;
-                proxy_read_timeout 5s;
-                error_page 502 504 /frontend-down.html;
-            }
-            
-            location /test-backend {
-                proxy_pass http://spendly-backend:8000;
-                proxy_connect_timeout 2s;
-                proxy_read_timeout 5s;
-                error_page 502 504 /backend-down.html;
-            }
-            
-            # Error pages for debugging
-            location = /frontend-down.html {
-                return 503 "Frontend container not available (spendly-frontend:80)";
-                add_header Content-Type text/plain;
-            }
-            
-            location = /backend-down.html {
-                return 503 "Backend container not available (spendly-backend:8000)";
-                add_header Content-Type text/plain;
-            }
-            
-            # Production routes
-            location /api/ {
-                proxy_pass http://spendly-backend:8000;
-                proxy_set_header Host $$host;
-                proxy_set_header X-Real-IP $$remote_addr;
-                proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $$scheme;
-                proxy_connect_timeout 10s;
-                proxy_send_timeout 60s;
-                proxy_read_timeout 60s;
-                
-                # Graceful error handling
-                error_page 502 504 = @backend_error;
-            }
-            
-            location /uploads/ {
-                proxy_pass http://spendly-backend:8000;
-                proxy_set_header Host $$host;
-                proxy_set_header X-Real-IP $$remote_addr;
-                proxy_connect_timeout 10s;
-                proxy_send_timeout 60s;
-                proxy_read_timeout 60s;
-                error_page 502 504 = @backend_error;
-            }
-            
-            location / {
-                proxy_pass http://spendly-frontend:80;
-                proxy_set_header Host $$host;
-                proxy_set_header X-Real-IP $$remote_addr;
-                proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $$scheme;
-                proxy_connect_timeout 10s;
-                proxy_send_timeout 60s;
-                proxy_read_timeout 60s;
-                
-                # Graceful error handling
-                error_page 502 504 = @frontend_error;
-            }
-            
-            # Error handlers
-            location @backend_error {
-                return 503 "Backend service temporarily unavailable. Please try again later.";
-                add_header Content-Type text/plain;
-            }
-            
-            location @frontend_error {
-                return 503 "Frontend service temporarily unavailable. Please try again later.";
-                add_header Content-Type text/plain;
-            }
-        }
+        cat > /etc/nginx/conf.d/default.conf << EOF
+      server {
+          listen 80;
+          server_name _;
+          client_max_body_size 50m;
+          access_log /var/log/nginx/access.log;
+          error_log /var/log/nginx/error.log;
+          
+          location /nginx-health {
+              return 200 "{\"status\": \"healthy\", \"server\": \"spendly-nginx\"}";
+              add_header Content-Type application/json;
+          }
+          
+          location /nginx-status {
+              return 200 "Spendly Nginx - Running OK";
+              add_header Content-Type text/plain;
+          }
+          
+          location /test-frontend {
+              proxy_pass http://spendly-frontend:80;
+              proxy_connect_timeout 2s;
+              proxy_read_timeout 5s;
+          }
+          
+          location /test-backend {
+              proxy_pass http://spendly-backend:8000;
+              proxy_connect_timeout 2s;
+              proxy_read_timeout 5s;
+          }
+          
+          location /api/ {
+              proxy_pass http://spendly-backend:8000;
+              proxy_set_header Host \$host;
+              proxy_set_header X-Real-IP \$remote_addr;
+              proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto \$scheme;
+              proxy_connect_timeout 10s;
+              proxy_send_timeout 60s;
+              proxy_read_timeout 60s;
+          }
+          
+          location /uploads/ {
+              proxy_pass http://spendly-backend:8000;
+              proxy_set_header Host \$host;
+              proxy_set_header X-Real-IP \$remote_addr;
+              proxy_connect_timeout 10s;
+              proxy_send_timeout 60s;
+              proxy_read_timeout 60s;
+          }
+          
+          location / {
+              proxy_pass http://spendly-frontend:80;
+              proxy_set_header Host \$host;
+              proxy_set_header X-Real-IP \$remote_addr;
+              proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto \$scheme;
+              proxy_connect_timeout 10s;
+              proxy_send_timeout 60s;
+              proxy_read_timeout 60s;
+          }
+      }
       EOF
-        echo "✅ Configuration created. Testing..." &&
-        nginx -t &&
-        echo "✅ Configuration valid. Starting Nginx..." &&
-        exec nginx -g "daemon off;"
+        nginx -t && exec nginx -g "daemon off;"
       '
 
   # Nginx UI - Web interface for monitoring
@@ -205,15 +180,17 @@ services:
     restart: unless-stopped
     volumes:
       - /opt/spendly/data/nginx-logs:/var/log/nginx:ro
-      - /opt/spendly/data/nginx-config:/etc/nginx/conf.d:ro
       - /opt/spendly/data/nginx-ui-config:/etc/nginx-ui
       - /opt/spendly/data/nginx-ui-db:/var/lib/nginx-ui
     environment:
       - NGINX_LOG_DIR=/var/log/nginx
       - GIN_MODE=release
+    depends_on:
+      init-dirs:
+        condition: service_completed_successfully
     command: >
       sh -c '
         mkdir -p /etc/nginx-ui /var/lib/nginx-ui &&
-        chown -R nginx-ui:nginx-ui /etc/nginx-ui /var/lib/nginx-ui 2>/dev/null || true &&
+        chown -R 1000:1000 /etc/nginx-ui /var/lib/nginx-ui 2>/dev/null || true &&
         exec nginx-ui
       '
