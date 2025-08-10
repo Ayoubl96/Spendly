@@ -11,10 +11,7 @@ ENV NODE_ENV=production
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies first
-RUN npm ci --only=production --no-audit
-
-# Then install dev dependencies needed for build
+# Install all dependencies (both production and dev for build)
 RUN npm ci --no-audit
 
 # Copy source code
@@ -26,8 +23,13 @@ ARG REACT_APP_UPLOAD_URL=/uploads
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 ENV REACT_APP_UPLOAD_URL=$REACT_APP_UPLOAD_URL
 
-# Build with error handling
-RUN npm run build 2>&1 | tee build.log || (echo "Build failed:" && cat build.log && exit 1)
+# Build with detailed error handling
+RUN echo "Starting React build..." && \
+    npm run build 2>&1 | tee build.log && \
+    echo "Build completed successfully" && \
+    ls -la build/ && \
+    echo "Build directory contents verified" || \
+    (echo "❌ Build failed! Error details:" && cat build.log && exit 1)
 
 # Production stage
 FROM nginx:1.24-alpine

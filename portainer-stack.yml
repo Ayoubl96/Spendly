@@ -74,7 +74,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -102,5 +102,4 @@ services:
       retries: 3
       start_period: 30s
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
