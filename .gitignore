@@ -26,7 +26,14 @@ venv/
 ENV/
 env/
 .venv
-
+env.prod
+env.dev
+env.staging
+env.test
+env.local
+env.development
+env.production
+env.portainer-simple
 # PyCharm
 .idea/
 
