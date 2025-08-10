@@ -1,33 +1,18 @@
-# Spendly Production Stack - Pre-built Frontend
+# Spendly Production Deployment
 version: '3.8'
 
 services:
-  # Init container to create directories
-  init-dirs:
-    image: alpine:latest
-    container_name: spendly-init-dirs
-    volumes:
-      - /opt/spendly/data:/data
-    command: >
-      sh -c '
-        echo "🏗️ Creating required directories..." &&
-        mkdir -p /data/postgres /data/uploads /data/logs &&
-        chown -R 1000:1000 /data/uploads /data/logs 2>/dev/null || true &&
-        echo "✅ Directories created successfully"
-      '
-    restart: "no"
-
   # Database
   database:
     image: postgres:15-alpine
-    container_name: database
+    container_name: spendly-database
     environment:
       - POSTGRES_DB=${DB_NAME:-spendly_prod}
-      - POSTGRES_USER=${DB_USER:-spendly_user}  
+      - POSTGRES_USER=${DB_USER:-spendly_user}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
-      - /opt/spendly/data/postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-spendly_user} -d ${DB_NAME:-spendly_prod}"]
@@ -35,9 +20,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    depends_on:
-      init-dirs:
-        condition: service_completed_successfully
+    networks:
+      - spendly-network
 
   # Backend Service
   backend:
@@ -46,14 +30,12 @@ services:
       dockerfile: Dockerfile.prod
     container_name: spendly-backend
     ports:
-      - "9000:8001"  # External:Internal - backend runs on 8001 internally
+      - "9000:8001"
     environment:
       - ENVIRONMENT=production
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:4000}
-      - BACKEND_URL=${BACKEND_URL:-http://localhost:9000}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:4000}
+      - PORT=8001
       - DB_HOST=database
       - DB_PORT=5432
       - DB_NAME=${DB_NAME:-spendly_prod}
@@ -64,11 +46,15 @@ services:
       - JWT_EXPIRE=${JWT_EXPIRE:-7d}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:4000}
       - CORS_CREDENTIALS=true
-      - PORT=8001  # Tell backend to run on port 8001 instead of 8000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:4000}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:9000}
+      - UPLOAD_PATH=/app/uploads
+      - UPLOAD_URL=${BACKEND_URL:-http://localhost:9000}/uploads
     volumes:
-      - /opt/spendly/data/uploads:/app/uploads
-      - /opt/spendly/data/logs:/app/logs
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
     depends_on:
       database:
         condition: service_healthy
@@ -79,21 +65,40 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - spendly-network
 
-  # Frontend Service - Using pre-built React app
+  # Frontend Service
   frontend:
     build:
       context: https://github.com/Ayoubl96/Spendly.git#main:frontend
-      dockerfile: Dockerfile.prebuilt
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=${BACKEND_URL:-http://localhost:9000}/api/v1
+        - REACT_APP_UPLOAD_URL=${BACKEND_URL:-http://localhost:9000}/uploads
     container_name: spendly-frontend
     ports:
-      - "4000:3000"  # External:Internal - frontend serves on port 3000
+      - "4000:80"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 40s
     depends_on:
       - backend
+    networks:
+      - spendly-network
+
+networks:
+  spendly-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+  logs_data:
+    driver: local
