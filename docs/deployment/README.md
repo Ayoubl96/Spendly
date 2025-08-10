@@ -23,7 +23,7 @@ graph TB
             FE[Frontend Container<br/>React App<br/>Port: 3000]
             BE[Backend Container<br/>Node.js API<br/>Port: 3001]
             DB[Database Container<br/>PostgreSQL<br/>Port: 5432]
-            REDIS[Redis Container<br/>Cache<br/>Port: 6379]
+
             NGINX[Nginx Container<br/>Reverse Proxy<br/>Port: 80/443]
         end
         VOL[Docker Volumes<br/>- Database Data<br/>- File Uploads<br/>- Logs]
@@ -33,7 +33,7 @@ graph TB
     NGINX --> FE
     NGINX --> BE
     BE --> DB
-    BE --> REDIS
+
     BE --> VOL
 ```
 
@@ -43,7 +43,7 @@ graph TB
 - **SSL**: Let's Encrypt (optional)
 - **Backend**: Python with FastAPI
 - **Database**: PostgreSQL with persistent volumes
-- **Caching**: Redis
+
 - **File Storage**: Local filesystem with Docker volumes
 - **Monitoring**: Docker health checks + logs
 
@@ -99,7 +99,7 @@ sudo mkdir -p /opt/spendly
 cd /opt/spendly
 
 # Create data directories
-sudo mkdir -p data/{postgres,redis,uploads,backups,logs}
+sudo mkdir -p data/{postgres,uploads,backups,logs}
 sudo mkdir -p config/{nginx,ssl}
 
 # Set permissions
@@ -124,10 +124,7 @@ DB_USER=spendly_user
 DB_PASSWORD=secure_password_here
 DB_URL=postgresql://spendly_user:secure_password_here@database:5432/spendly
 
-# Redis Configuration
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_PASSWORD=redis_password_here
+
 
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_here_make_it_long_and_secure
@@ -248,23 +245,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Redis Cache Service
-  redis:
-    image: redis:7-alpine
-    container_name: spendly-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD}
-    volumes:
-      - ./data/redis:/data
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-    networks:
-      - spendly-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
 
 networks:
   spendly-network:
@@ -272,7 +253,6 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:
   upload_data:
 ```
 

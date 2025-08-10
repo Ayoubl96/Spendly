@@ -52,7 +52,7 @@ cd ../frontend && npm install
 | Frontend | 3000 | http://localhost:3000 | React development server |
 | Backend API | 3001 | http://localhost:3001 | Python FastAPI server |
 | Database | 5432 | localhost:5432 | PostgreSQL database |
-| Redis | 6379 | localhost:6379 | Redis cache |
+
 | Mailhog | 8025 | http://localhost:8025 | Email testing |
 
 ## 🏗️ Project Structure

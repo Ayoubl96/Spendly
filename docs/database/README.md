@@ -17,7 +17,7 @@ This document outlines the database schema and design decisions for the Spendly 
 - **Primary**: PostgreSQL 15+
 - **Development**: PostgreSQL (Docker)
 - **Production**: PostgreSQL (self-hosted)
-- **Caching**: Redis for session and query caching
+
 
 ### Design Principles
 - **Normalization**: 3NF with selective denormalization for performance

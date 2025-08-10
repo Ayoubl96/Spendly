@@ -1,0 +1,206 @@
+# Portainer Stack Configuration for Spendly Production
+# Use this file to deploy via Portainer UI
+version: '3.8'
+
+services:
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:1.24-alpine
+    container_name: spendly-nginx
+    ports:
+      - "8080:80"  # Changed to 8080 to avoid conflicts
+    volumes:
+      - nginx_config:/etc/nginx/conf.d:ro
+      - nginx_main_config:/etc/nginx/nginx.conf:ro
+      - upload_data:/uploads:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - spendly-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"] 
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  # Frontend Service
+  frontend:
+    image: spendly-frontend:latest
+    container_name: spendly-frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.prod
+      args:
+        - REACT_APP_API_URL=/api/v1
+        - REACT_APP_UPLOAD_URL=/uploads
+    restart: unless-stopped
+    networks:
+      - spendly-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Backend Service
+  backend:
+    image: spendly-backend:latest
+    container_name: spendly-backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.prod
+    environment:
+      - ENVIRONMENT=production
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - FRONTEND_URL=https://spendly.ayoublefhim.com
+      - BACKEND_URL=https://spendly.ayoublefhim.com
+      - CORS_ORIGIN=https://spendly.ayoublefhim.com
+    env_file:
+      - env.production
+    volumes:
+      - upload_data:/app/uploads
+      - backend_logs:/app/logs
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - spendly-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Database Service
+  database:
+    image: postgres:15-alpine
+    container_name: spendly-database
+    environment:
+      - POSTGRES_DB=spendly_prod
+      - POSTGRES_USER=spendly_user
+      - POSTGRES_PASSWORD=CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - database_backups:/backups
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    networks:
+      - spendly-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spendly_user -d spendly_prod"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    # Security: Don't expose database port in production
+
+  # Database Backup Service
+  backup:
+    image: postgres:15-alpine
+    container_name: spendly-backup
+    environment:
+      - PGHOST=database
+      - PGDATABASE=spendly_prod
+      - PGUSER=spendly_user
+      - PGPASSWORD=CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION
+    volumes:
+      - database_backups:/backups
+      - upload_data:/uploads:ro
+    depends_on:
+      - database
+    restart: unless-stopped
+    networks:
+      - spendly-network
+    command: |
+      sh -c '
+        echo "0 2 * * * pg_dump > /backups/spendly_backup_$$(date +%Y%m%d_%H%M%S).sql && find /backups -name \"*.sql\" -mtime +30 -delete" | crontab -
+        crond -f
+      '
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+networks:
+  spendly-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/spendly/data/postgres
+  upload_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/spendly/data/uploads
+  database_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/spendly/data/backups
+  backend_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/spendly/data/logs
+  nginx_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/spendly/data/nginx-logs
+  nginx_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/spendly/config/nginx
+  nginx_main_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/spendly/config/nginx/nginx.conf
