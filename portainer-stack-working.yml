@@ -1,0 +1,113 @@
+# Spendly Production Stack - Fixed Port Binding
+# Based on successful test-nginx pattern
+version: '3.8'
+
+services:
+  # Nginx Reverse Proxy - Simple like test-nginx
+  nginx:
+    image: nginx:1.24-alpine
+    container_name: spendly-nginx
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - /opt/spendly/data/nginx-logs:/var/log/nginx
+    command: |
+      sh -c '
+        cat > /etc/nginx/conf.d/default.conf << "EOF"
+        server {
+            listen 80;
+            location /health {
+                return 200 "nginx healthy";
+                add_header Content-Type text/plain;
+            }
+            location / {
+                proxy_pass http://frontend:80;
+                proxy_set_header Host \$$host;
+                proxy_set_header X-Real-IP \$$remote_addr;
+                proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$$scheme;
+            }
+            location /api/ {
+                proxy_pass http://backend:8000;
+                proxy_set_header Host \$$host;
+                proxy_set_header X-Real-IP \$$remote_addr;
+                proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$$scheme;
+            }
+            location /uploads/ {
+                proxy_pass http://backend:8000;
+                proxy_set_header Host \$$host;
+                client_max_body_size 50m;
+            }
+        }
+        EOF
+        nginx -g "daemon off;"
+      '
+
+  # Frontend Service
+  frontend:
+    build:
+      context: https://github.com/Ayoubl96/Spendly.git#main:frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - REACT_APP_API_URL=/api/v1
+        - REACT_APP_UPLOAD_URL=/uploads
+    container_name: spendly-frontend
+    restart: unless-stopped
+
+  # Backend Service  
+  backend:
+    build:
+      context: https://github.com/Ayoubl96/Spendly.git#main:backend
+      dockerfile: Dockerfile.prod
+    container_name: spendly-backend
+    environment:
+      - ENVIRONMENT=production
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - FRONTEND_URL=https://spendly.ayoublefhim.com
+      - BACKEND_URL=https://spendly.ayoublefhim.com
+      - CORS_ORIGIN=https://spendly.ayoublefhim.com
+      # Database Configuration
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=spendly_prod
+      - DB_USER=spendly_user
+      - DB_PASSWORD=88gv^rt8Lkv&&ffNrwy2iV
+      - DB_URL=postgresql://spendly_user:88gv^rt8Lkv&&ffNrwy2iV@database:5432/spendly_prod
+      # JWT Configuration
+      - JWT_SECRET=f366ece0a833b680920ad9046e5d1ba1034ab7f3a0afe5c18ab7c844e539f341
+      - JWT_EXPIRE=7d
+      - JWT_ALGORITHM=HS256
+      # Security
+      - BCRYPT_ROUNDS=12
+      - CORS_CREDENTIALS=true
+    volumes:
+      - /opt/spendly/data/uploads:/app/uploads
+      - /opt/spendly/data/logs:/app/logs
+    depends_on:
+      - database
+    restart: unless-stopped
+
+  # Database Service
+  database:
+    image: postgres:15-alpine
+    container_name: spendly-database
+    environment:
+      - POSTGRES_DB=spendly_prod
+      - POSTGRES_USER=spendly_user
+      - POSTGRES_PASSWORD=88gv^rt8Lkv&&ffNrwy2iV
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - /opt/spendly/data/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spendly_user -d spendly_prod"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
