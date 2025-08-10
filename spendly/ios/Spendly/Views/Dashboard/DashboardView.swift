@@ -6,6 +6,7 @@ struct DashboardView: View {
     @EnvironmentObject var expenseStore: ExpenseStore
     @EnvironmentObject var budgetStore: BudgetStore
     @State private var showingAddExpense = false
+    @State private var loadDataTask: Task<Void, Never>?
     
     var body: some View {
         NavigationView {
@@ -110,24 +111,47 @@ struct DashboardView: View {
             }
             .navigationTitle("Dashboard")
             .refreshable {
-                await loadData()
+                loadDataTask?.cancel()
+                loadDataTask = Task {
+                    await loadData()
+                }
+                await loadDataTask?.value
             }
             .sheet(isPresented: $showingAddExpense) {
                 AddExpenseView()
             }
             .onAppear {
-                Task {
+                loadDataTask?.cancel()
+                loadDataTask = Task {
                     await loadData()
                 }
+            }
+            .onDisappear {
+                loadDataTask?.cancel()
+                loadDataTask = nil
             }
         }
     }
     
     private func loadData() async {
-        await expenseStore.fetchExpenses()
-        await expenseStore.fetchCategories()
-        await expenseStore.fetchCurrencies()
-        await budgetStore.fetchBudgetSummary()
+        // Run API calls in parallel to avoid cancellation issues
+        async let expensesTask = expenseStore.fetchExpenses()
+        async let categoriesTask = expenseStore.fetchCategories()
+        async let currenciesTask = expenseStore.fetchCurrencies()
+        async let budgetSummaryTask = budgetStore.fetchBudgetSummary()
+        
+        // Wait for all tasks to complete
+        do {
+            await expensesTask
+            await categoriesTask
+            await currenciesTask
+            await budgetSummaryTask
+        } catch {
+            // Handle task cancellation gracefully
+            if !Task.isCancelled {
+                print("Error loading dashboard data: \(error)")
+            }
+        }
     }
 }
 

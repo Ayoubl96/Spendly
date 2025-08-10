@@ -48,7 +48,9 @@ class BudgetStore: ObservableObject {
         do {
             budgetSummary = try await apiService.getBudgetSummary()
         } catch {
-            self.error = error.localizedDescription
+            if !Task.isCancelled {
+                self.error = error.localizedDescription
+            }
         }
         
         isLoading = false

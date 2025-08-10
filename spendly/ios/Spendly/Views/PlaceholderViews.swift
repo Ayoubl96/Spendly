@@ -240,7 +240,7 @@ struct BudgetCardView: View {
                 Text(budget.name)
                     .font(.headline)
                 Spacer()
-                Text(budget.amount.formatted(currency: budget.currency))
+                Text(String(format: "%.2f %@", budget.amount, budget.currency))
                     .font(.subheadline)
             }
             
@@ -258,22 +258,141 @@ struct BudgetCardView: View {
 // MARK: - Categories View
 struct CategoriesView: View {
     @EnvironmentObject var categoryStore: CategoryStore
+    @State private var showingAddCategory = false
+    @State private var selectedCategory: Category?
+    @State private var showingEditCategory = false
+    @State private var isRefreshing = false
+    @State private var successMessage: String?
+    @State private var showingDeleteConfirmation = false
+    @State private var categoryToDelete: CategoryTree?
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(categoryStore.categoryTree) { category in
-                    CategoryTreeRow(category: category)
+            VStack {
+                if categoryStore.isLoading && !isRefreshing {
+                    ProgressView("Loading categories...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if categoryStore.categoryTree.isEmpty {
+                    EmptyStateView(
+                        icon: "folder",
+                        title: "No Categories",
+                        message: "You haven't created any categories yet. Add your first category to start organizing your expenses."
+                    )
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(categoryStore.categoryTree) { category in
+                                CategoryTreeRow(
+                                    category: category,
+                                                                    onEdit: { categoryId in
+                                    Task {
+                                        if let category = await categoryStore.getCategoryById(id: categoryId) {
+                                            selectedCategory = category
+                                            showingEditCategory = true
+                                        }
+                                    }
+                                },
+                                    onDelete: { categoryId in
+                                        if let cat = categoryStore.categoryTree.first(where: { $0.id == categoryId }) {
+                                            categoryToDelete = cat
+                                            showingDeleteConfirmation = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    }
+                    .refreshable {
+                        await performRefresh()
+                    }
                 }
             }
             .navigationTitle("Categories")
-            .refreshable {
-                await categoryStore.fetchCategoryTree()
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingAddCategory = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
             }
             .onAppear {
-                Task {
-                    await categoryStore.fetchCategoryTree()
+                if categoryStore.categoryTree.isEmpty {
+                    Task {
+                        await categoryStore.fetchCategoryTree()
+                    }
                 }
+            }
+            .sheet(isPresented: $showingAddCategory) {
+                CategoryFormView(onSuccess: { message in
+                    successMessage = message
+                })
+                .environmentObject(categoryStore)
+            }
+            .sheet(isPresented: $showingEditCategory) {
+                if let category = selectedCategory {
+                    CategoryFormView(editingCategory: category, onSuccess: { message in
+                        successMessage = message
+                    })
+                    .environmentObject(categoryStore)
+                }
+            }
+            .alert("Delete Category", isPresented: $showingDeleteConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    categoryToDelete = nil
+                }
+                Button("Delete", role: .destructive) {
+                    if let category = categoryToDelete {
+                        Task {
+                            await deleteCategory(category)
+                        }
+                    }
+                }
+            } message: {
+                if let category = categoryToDelete {
+                    Text("Are you sure you want to delete '\(category.name)'? This action cannot be undone.")
+                }
+            }
+            .alert("Error", isPresented: .constant(categoryStore.error != nil && successMessage == nil)) {
+                Button("OK") {
+                    categoryStore.error = nil
+                }
+            } message: {
+                if let error = categoryStore.error {
+                    Text(error)
+                }
+            }
+            .alert("Success", isPresented: .constant(successMessage != nil)) {
+                Button("OK") {
+                    successMessage = nil
+                }
+            } message: {
+                if let message = successMessage {
+                    Text(message)
+                }
+            }
+        }
+    }
+    
+    private func performRefresh() async {
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        await categoryStore.fetchCategoryTree()
+        isRefreshing = false
+    }
+    
+    private func deleteCategory(_ category: CategoryTree) async {
+        let response = await categoryStore.deleteCategory(id: category.id)
+        categoryToDelete = nil
+        
+        if let response = response {
+            if response.reassignedExpenses > 0 {
+                successMessage = "Category deleted successfully. \(response.reassignedExpenses) expenses were reassigned."
+            } else {
+                successMessage = "Category deleted successfully."
             }
         }
     }
@@ -281,48 +400,178 @@ struct CategoriesView: View {
 
 struct CategoryTreeRow: View {
     let category: CategoryTree
+    let onEdit: ((String) -> Void)?
+    let onDelete: ((String) -> Void)?
     @State private var isExpanded = false
+    @State private var showingActionSheet = false
+    
+    init(category: CategoryTree, onEdit: ((String) -> Void)? = nil, onDelete: ((String) -> Void)? = nil) {
+        self.category = category
+        self.onEdit = onEdit
+        self.onDelete = onDelete
+    }
     
     var body: some View {
-        VStack(alignment: .leading) {
-            HStack {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 16) {
+                // Category Icon
                 Image(systemName: category.systemIcon)
-                    .foregroundColor(category.displayColor)
+                    .foregroundColor(.white)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(category.displayColor)
+                            .shadow(color: category.displayColor.opacity(0.3), radius: 4, x: 0, y: 2)
+                    )
                 
-                VStack(alignment: .leading) {
+                // Category Info
+                VStack(alignment: .leading, spacing: 4) {
                     Text(category.name)
-                        .font(.subheadline)
+                        .font(.system(.headline, design: .rounded))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
                     
-                    HStack {
-                        Text("\(category.expenseCount) expenses")
-                        Text("•")
-                        Text(category.totalAmount.formatted(decimals: 2))
+                    HStack(spacing: 8) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.text")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text("\(category.expenseCount)")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        HStack(spacing: 4) {
+                            Image(systemName: "dollarsign.circle")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                            Text(String(format: "%.2f", category.totalAmountValue))
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 }
                 
                 Spacer()
                 
-                if !category.subcategories.isEmpty {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .foregroundColor(.secondary)
+                // Action Buttons
+                HStack(spacing: 12) {
+                    // Edit Button
+                    if let onEdit = onEdit {
+                        Button(action: {
+                            onEdit(category.id)
+                        }) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.blue)
+                                .frame(width: 36, height: 36)
+                                .background(
+                                    Circle()
+                                        .fill(Color.blue.opacity(0.1))
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    
+                    // Expand/Collapse Button (only for categories with subcategories)
+                    if !category.subcategories.isEmpty {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                isExpanded.toggle()
+                            }
+                        }) {
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    Circle()
+                                        .fill(Color.gray.opacity(0.1))
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(.systemGray5), lineWidth: 1)
+            )
             .contentShape(Rectangle())
             .onTapGesture {
-                withAnimation {
-                    isExpanded.toggle()
+                if category.subcategories.isEmpty {
+                    // If no subcategories, tap to edit
+                    onEdit?(category.id)
+                } else {
+                    // If has subcategories, tap to expand
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        isExpanded.toggle()
+                    }
+                }
+            }
+            .contextMenu {
+                if let onEdit = onEdit {
+                    Button(action: {
+                        onEdit(category.id)
+                    }) {
+                        Label("Edit Category", systemImage: "pencil")
+                    }
+                }
+                
+                if let onDelete = onDelete {
+                    Button(role: .destructive, action: {
+                        onDelete(category.id)
+                    }) {
+                        Label("Delete Category", systemImage: "trash")
+                    }
+                }
+            }
+            .swipeActions(edge: .leading) {
+                if let onEdit = onEdit {
+                    Button {
+                        onEdit(category.id)
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    .tint(.blue)
+                }
+            }
+            .swipeActions(edge: .trailing) {
+                if let onDelete = onDelete {
+                    Button(role: .destructive) {
+                        onDelete(category.id)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
                 }
             }
             
-            if isExpanded {
-                ForEach(category.subcategories) { subcategory in
-                    HStack {
-                        Spacer().frame(width: 20)
-                        CategoryTreeRow(category: subcategory)
+            // Subcategories
+            if isExpanded && !category.subcategories.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(category.subcategories) { subcategory in
+                        HStack {
+                            Spacer().frame(width: 24)
+                            CategoryTreeRow(category: subcategory, onEdit: onEdit, onDelete: onDelete)
+                        }
                     }
                 }
+                .padding(.top, 12)
+                .padding(.leading, 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemGray6).opacity(0.5))
+                        .padding(.horizontal, 8)
+                )
             }
         }
     }

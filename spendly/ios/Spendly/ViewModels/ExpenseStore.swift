@@ -100,7 +100,9 @@ class ExpenseStore: ObservableObject {
         do {
             categories = try await apiService.getCategories()
         } catch {
-            print("Failed to fetch categories: \(error)")
+            if !Task.isCancelled {
+                print("Failed to fetch categories: \(error)")
+            }
         }
     }
     
@@ -116,7 +118,9 @@ class ExpenseStore: ObservableObject {
         do {
             currencies = try await apiService.getCurrencies()
         } catch {
-            print("Failed to fetch currencies: \(error)")
+            if !Task.isCancelled {
+                print("Failed to fetch currencies: \(error)")
+            }
         }
     }
     

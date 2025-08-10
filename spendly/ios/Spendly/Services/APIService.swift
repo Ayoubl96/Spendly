@@ -30,7 +30,7 @@ enum APIError: Error, LocalizedError {
 class APIService: ObservableObject {
     static let shared = APIService()
     
-    private let baseURL = ProcessInfo.processInfo.environment["API_URL"] ?? "http://localhost:8000/api/v1"
+    private let baseURL = ProcessInfo.processInfo.environment["API_URL"] ?? "https://spendly-api.ayoublefhim.com/api/v1"
     private var authToken: String?
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
@@ -89,10 +89,20 @@ class APIService: ObservableObject {
                 throw APIError.noData
             }
             
+            // Debug logging: print the raw response
+            if let responseString = String(data: data, encoding: .utf8) {
+                NSLog("🔍 API Response for \(T.self):")
+                NSLog("📄 Raw JSON: \(responseString)")
+                NSLog("📊 Status Code: \(httpResponse.statusCode)")
+            }
+            
             do {
                 return try decoder.decode(T.self, from: data)
             } catch {
-                print("Decoding error: \(error)")
+                NSLog("❌ Decoding error for \(T.self): \(error)")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    NSLog("📄 Failed to decode JSON: \(responseString)")
+                }
                 throw APIError.decodingError
             }
             
@@ -254,14 +264,21 @@ class APIService: ObservableObject {
         return try handleResponse(data, response, nil, type: Category.self)
     }
     
-    func deleteCategory(id: String, reassignTo: String? = nil) async throws {
+    func deleteCategory(id: String, reassignTo: String? = nil) async throws -> DeleteCategoryResponse {
         var endpoint = "/categories/\(id)"
         if let reassignTo = reassignTo {
             endpoint += "?reassign_to_category_id=\(reassignTo)"
         }
         
         let request = try createRequest(endpoint: endpoint, method: "DELETE")
-        let (_, _) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return try handleResponse(data, response, nil, type: DeleteCategoryResponse.self)
+    }
+    
+    func getCategoryStats(id: String) async throws -> CategoryStats {
+        let request = try createRequest(endpoint: "/categories/\(id)/stats")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return try handleResponse(data, response, nil, type: CategoryStats.self)
     }
     
     // MARK: - Currencies

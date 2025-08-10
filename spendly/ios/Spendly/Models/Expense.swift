@@ -44,6 +44,55 @@ struct Expense: Codable, Identifiable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Basic fields
+        id = try container.decode(String.self, forKey: .id)
+        amount = try container.decode(Double.self, forKey: .amount)
+        currency = try container.decode(String.self, forKey: .currency)
+        amountInBaseCurrency = try container.decodeIfPresent(Double.self, forKey: .amountInBaseCurrency)
+        exchangeRate = try container.decodeIfPresent(Double.self, forKey: .exchangeRate)
+        description = try container.decode(String.self, forKey: .description)
+        userId = try container.decode(String.self, forKey: .userId)
+        categoryId = try container.decodeIfPresent(String.self, forKey: .categoryId)
+        subcategoryId = try container.decodeIfPresent(String.self, forKey: .subcategoryId)
+        paymentMethod = try container.decodeIfPresent(PaymentMethod.self, forKey: .paymentMethod)
+        receiptUrl = try container.decodeIfPresent(String.self, forKey: .receiptUrl)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes)
+        location = try container.decodeIfPresent(String.self, forKey: .location)
+        vendor = try container.decodeIfPresent(String.self, forKey: .vendor)
+        isShared = try container.decode(Bool.self, forKey: .isShared)
+        sharedWith = try container.decodeIfPresent([String].self, forKey: .sharedWith)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags)
+        
+        // Custom date decoding for backend format: "2025-08-10T15:32:27.210908"
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+        
+        // Decode expense date
+        let expenseDateString = try container.decode(String.self, forKey: .expenseDate)
+        guard let expenseDateParsed = dateFormatter.date(from: expenseDateString) else {
+            throw DecodingError.dataCorruptedError(forKey: .expenseDate, in: container, debugDescription: "Date string does not match expected format")
+        }
+        expenseDate = expenseDateParsed
+        
+        // Decode created and updated dates
+        let createdAtString = try container.decode(String.self, forKey: .createdAt)
+        guard let createdAtDate = dateFormatter.date(from: createdAtString) else {
+            throw DecodingError.dataCorruptedError(forKey: .createdAt, in: container, debugDescription: "Date string does not match expected format")
+        }
+        createdAt = createdAtDate
+        
+        let updatedAtString = try container.decode(String.self, forKey: .updatedAt)
+        guard let updatedAtDate = dateFormatter.date(from: updatedAtString) else {
+            throw DecodingError.dataCorruptedError(forKey: .updatedAt, in: container, debugDescription: "Date string does not match expected format")
+        }
+        updatedAt = updatedAtDate
+    }
 }
 
 enum PaymentMethod: String, Codable, CaseIterable {
