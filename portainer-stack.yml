@@ -7,9 +7,9 @@ services:
     image: postgres:15-alpine
     container_name: spendly-database
     environment:
-      - POSTGRES_DB=spendly_prod
-      - POSTGRES_USER=spendly_user
-      - POSTGRES_PASSWORD=88gv^rt8Lkv&&ffNrwy2iV
+      - POSTGRES_DB=${POSTGRES_DB:-spendly_prod}
+      - POSTGRES_USER=${POSTGRES_USER:-spendly_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
       - /opt/spendly/data/postgres:/var/lib/postgresql/data
@@ -31,6 +31,12 @@ services:
         - REACT_APP_UPLOAD_URL=/uploads
     container_name: spendly-frontend
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 
   # Backend Service  
@@ -43,19 +49,19 @@ services:
       - ENVIRONMENT=production
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
-      - FRONTEND_URL=https://spendly.ayoublefhim.com
-      - BACKEND_URL=https://spendly.ayoublefhim.com
-      - CORS_ORIGIN=https://spendly.ayoublefhim.com
+      - FRONTEND_URL=${FRONTEND_URL:-https://spendly.ayoublefhim.com}
+      - BACKEND_URL=${BACKEND_URL:-https://spendly.ayoublefhim.com}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://spendly.ayoublefhim.com}
       - DB_HOST=spendly-database
       - DB_PORT=5432
-      - DB_NAME=spendly_prod
-      - DB_USER=spendly_user
-      - DB_PASSWORD=88gv^rt8Lkv&&ffNrwy2iV
-      - DB_URL=postgresql://spendly_user:88gv^rt8Lkv&&ffNrwy2iV@spendly-database:5432/spendly_prod
-      - JWT_SECRET=f366ece0a833b680920ad9046e5d1ba1034ab7f3a0afe5c18ab7c844e539f341
-      - JWT_EXPIRE=7d
-      - JWT_ALGORITHM=HS256
-      - BCRYPT_ROUNDS=12
+      - DB_NAME=${POSTGRES_DB:-spendly_prod}
+      - DB_USER=${POSTGRES_USER:-spendly_user}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_URL=postgresql://${POSTGRES_USER:-spendly_user}:${POSTGRES_PASSWORD}@spendly-database:5432/${POSTGRES_DB:-spendly_prod}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRE=${JWT_EXPIRE:-7d}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
       - CORS_CREDENTIALS=true
     volumes:
       - /opt/spendly/data/uploads:/app/uploads
@@ -78,106 +84,111 @@ services:
       - /opt/spendly/data/nginx-config:/etc/nginx/conf.d
     environment:
       - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_started
     command: >
       sh -c '
         echo "🚀 Starting Independent Nginx..." &&
         mkdir -p /var/log/nginx &&
         cat > /etc/nginx/conf.d/default.conf << "EOF"
-      server {
-          listen 80;
-          server_name _;
-          client_max_body_size 50m;
-          access_log /var/log/nginx/access.log;
-          error_log /var/log/nginx/error.log;
+server {
+    listen 80;
+    server_name _;
+    client_max_body_size 50m;
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
           
-          # Health check endpoint
-          location /nginx-health {
-              return 200 "{\\"status\\": \\"healthy\\", \\"timestamp\\": \\"$(date)\\", \\"server\\": \\"spendly-nginx\\"}";
-              add_header Content-Type application/json;
-          }
-          
-          # Status endpoint with upstream info
-          location /nginx-status {
-              return 200 "<!DOCTYPE html><html><head><title>Nginx Status</title></head><body><h1>Spendly Nginx Status</h1><p>Status: ✅ Running</p><p>Time: $(date)</p><p>Container: spendly-nginx</p><h2>Upstream Status:</h2><ul><li>Frontend: <a href=\\"/test-frontend\\">/test-frontend</a></li><li>Backend: <a href=\\"/test-backend\\">/test-backend</a></li></ul><h2>Links:</h2><ul><li><a href=\\"/\\">Frontend App</a></li><li><a href=\\"/api/docs\\">Backend API Docs</a></li><li><a href=\\"/nginx-health\\">Health Check</a></li></ul></body></html>";
-              add_header Content-Type text/html;
-          }
-          
-          # Test endpoints for debugging
-          location /test-frontend {
-              proxy_pass http://spendly-frontend:80;
-              proxy_connect_timeout 2s;
-              proxy_read_timeout 5s;
-              error_page 502 504 /frontend-down.html;
-          }
-          
-          location /test-backend {
-              proxy_pass http://spendly-backend:8000;
-              proxy_connect_timeout 2s;
-              proxy_read_timeout 5s;
-              error_page 502 504 /backend-down.html;
-          }
-          
-          # Error pages for debugging
-          location = /frontend-down.html {
-              return 503 "Frontend container not available (spendly-frontend:80)";
-              add_header Content-Type text/plain;
-          }
-          
-          location = /backend-down.html {
-              return 503 "Backend container not available (spendly-backend:8000)";
-              add_header Content-Type text/plain;
-          }
-          
-          # Production routes
-          location /api/ {
-              proxy_pass http://spendly-backend:8000;
-              proxy_set_header Host $$host;
-              proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_connect_timeout 10s;
-              proxy_send_timeout 60s;
-              proxy_read_timeout 60s;
-              
-              # Graceful error handling
-              error_page 502 504 = @backend_error;
-          }
-          
-          location /uploads/ {
-              proxy_pass http://spendly-backend:8000;
-              proxy_set_header Host $$host;
-              proxy_set_header X-Real-IP $$remote_addr;
-              proxy_connect_timeout 10s;
-              proxy_send_timeout 60s;
-              proxy_read_timeout 60s;
-              error_page 502 504 = @backend_error;
-          }
-          
-          location / {
-              proxy_pass http://spendly-frontend:80;
-              proxy_set_header Host $$host;
-              proxy_set_header X-Real-IP $$remote_addr;
-              proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $$scheme;
-              proxy_connect_timeout 10s;
-              proxy_send_timeout 60s;
-              proxy_read_timeout 60s;
-              
-              # Graceful error handling
-              error_page 502 504 = @frontend_error;
-          }
-          
-          # Error handlers
-          location @backend_error {
-              return 503 "Backend service temporarily unavailable. Please try again later.";
-              add_header Content-Type text/plain;
-          }
-          
-          location @frontend_error {
-              return 503 "Frontend service temporarily unavailable. Please try again later.";
-              add_header Content-Type text/plain;
-          }
-      }
+    # Health check endpoint
+    location /nginx-health {
+        return 200 "{\\"status\\": \\"healthy\\", \\"timestamp\\": \\"$(date)\\", \\"server\\": \\"spendly-nginx\\"}";
+        add_header Content-Type application/json;
+    }
+    
+    # Status endpoint with upstream info
+    location /nginx-status {
+        return 200 "<!DOCTYPE html><html><head><title>Nginx Status</title></head><body><h1>Spendly Nginx Status</h1><p>Status: ✅ Running</p><p>Time: $(date)</p><p>Container: spendly-nginx</p><h2>Upstream Status:</h2><ul><li>Frontend: <a href=\\"/test-frontend\\">/test-frontend</a></li><li>Backend: <a href=\\"/test-backend\\">/test-backend</a></li></ul><h2>Links:</h2><ul><li><a href=\\"/\\">Frontend App</a></li><li><a href=\\"/api/docs\\">Backend API Docs</a></li><li><a href=\\"/nginx-health\\">Health Check</a></li></ul></body></html>";
+        add_header Content-Type text/html;
+    }
+    
+    # Test endpoints for debugging
+    location /test-frontend {
+        proxy_pass http://spendly-frontend:80;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 5s;
+        error_page 502 504 /frontend-down.html;
+    }
+    
+    location /test-backend {
+        proxy_pass http://spendly-backend:8000;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 5s;
+        error_page 502 504 /backend-down.html;
+    }
+    
+    # Error pages for debugging
+    location = /frontend-down.html {
+        return 503 "Frontend container not available (spendly-frontend:80)";
+        add_header Content-Type text/plain;
+    }
+    
+    location = /backend-down.html {
+        return 503 "Backend container not available (spendly-backend:8000)";
+        add_header Content-Type text/plain;
+    }
+    
+    # Production routes
+    location /api/ {
+        proxy_pass http://spendly-backend:8000;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $$scheme;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Graceful error handling
+        error_page 502 504 = @backend_error;
+    }
+    
+    location /uploads/ {
+        proxy_pass http://spendly-backend:8000;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        error_page 502 504 = @backend_error;
+    }
+    
+    location / {
+        proxy_pass http://spendly-frontend:80;
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $$scheme;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        
+        # Graceful error handling
+        error_page 502 504 = @frontend_error;
+    }
+    
+    # Error handlers
+    location @backend_error {
+        return 503 "Backend service temporarily unavailable. Please try again later.";
+        add_header Content-Type text/plain;
+    }
+    
+    location @frontend_error {
+        return 503 "Frontend service temporarily unavailable. Please try again later.";
+        add_header Content-Type text/plain;
+    }
+}
       EOF
         echo "✅ Configuration created. Testing..." &&
         nginx -t &&
@@ -195,5 +206,14 @@ services:
     volumes:
       - /opt/spendly/data/nginx-logs:/var/log/nginx:ro
       - /opt/spendly/data/nginx-config:/etc/nginx/conf.d:ro
+      - /opt/spendly/data/nginx-ui-config:/etc/nginx-ui
+      - /opt/spendly/data/nginx-ui-db:/var/lib/nginx-ui
     environment:
       - NGINX_LOG_DIR=/var/log/nginx
+      - GIN_MODE=release
+    command: >
+      sh -c '
+        mkdir -p /etc/nginx-ui /var/lib/nginx-ui &&
+        chown -R nginx-ui:nginx-ui /etc/nginx-ui /var/lib/nginx-ui 2>/dev/null || true &&
+        exec nginx-ui
+      '
