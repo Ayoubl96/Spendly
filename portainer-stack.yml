@@ -53,9 +53,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 2G
         reservations:
-          memory: 256M
+          memory: 1G
 
   # Backend Service
   backend:
