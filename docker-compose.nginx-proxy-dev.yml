@@ -1,0 +1,139 @@
+# Development Docker Compose Configuration with Nginx Proxy Manager
+# This allows testing the NPM setup in development
+
+services:
+  # Nginx Proxy Manager for development testing
+  nginx-proxy-manager-dev:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: spendly-nginx-proxy-manager-dev
+    restart: unless-stopped
+    ports:
+      - '80:80'     # HTTP traffic
+      - '443:443'   # HTTPS traffic  
+      - '8081:81'   # Admin Web UI (different port for dev)
+    environment:
+      DISABLE_IPV6: 'true'
+    volumes:
+      - npm_dev_data:/data
+      - npm_dev_letsencrypt:/etc/letsencrypt
+    networks:
+      - spendly-dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:81/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Development Server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: spendly-frontend-dev
+    # Remove external port - access via NPM
+    expose:
+      - "3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost/api/v1  # Via NPM
+      - REACT_APP_UPLOAD_URL=http://localhost/uploads  # Via NPM
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - backend
+    networks:
+      - spendly-dev
+    stdin_open: true
+    tty: true
+
+  # Backend Development Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: spendly-backend-dev
+    # Remove external port - access via NPM
+    expose:
+      - "8000"
+      - "5678" # Debug port
+    volumes:
+      - ./backend:/app
+      - ./data/uploads:/app/uploads
+      - ./data/logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      # Update CORS for NPM
+      - CORS_ORIGIN=http://localhost
+      - FRONTEND_URL=http://localhost
+      - BACKEND_URL=http://localhost
+      # Currency API Configuration
+      - CURRENCY_API_KEY=demo
+      - CURRENCY_API_BASE_URL=https://api.fastforex.io/fetch-one
+      - CURRENCY_API_TIMEOUT=10
+      - CURRENCY_CACHE_DURATION_HOURS=1
+    depends_on:
+      - database
+    networks:
+      - spendly-dev
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: spendly-database-dev
+    environment:
+      - POSTGRES_DB=spendly_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # Keep port for direct database access in development
+    ports:
+      - "5432:5432"
+    networks:
+      - spendly-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d spendly_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Mailhog for email testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: spendly-mailhog-dev
+    # Keep ports for direct access in development
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI port
+    networks:
+      - spendly-dev
+
+  # Database admin interface (optional)
+  adminer:
+    image: adminer:4.8.1
+    container_name: spendly-adminer-dev
+    # Keep port for direct access in development
+    ports:
+      - "8080:8080"
+    networks:
+      - spendly-dev
+    environment:
+      - ADMINER_DEFAULT_SERVER=database
+
+networks:
+  spendly-dev:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+  npm_dev_data:
+  npm_dev_letsencrypt:

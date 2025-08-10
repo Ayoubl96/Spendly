@@ -1,11 +1,4 @@
 # Spendly Production Deployment with Nginx Proxy Manager
-# 
-# IMPORTANT: This configuration now uses Nginx Proxy Manager for SSL and proxy management
-# 1. Deploy this stack
-# 2. Access Nginx Proxy Manager at http://your-server-ip:81
-# 3. Default login: admin@example.com / changeme
-# 4. Configure proxy hosts for your domains
-#
 version: '3.8'
 
 services:
@@ -20,17 +13,44 @@ services:
       - '443:443'   # HTTPS traffic  
       - '81:81'     # Admin Web UI (change this port for security)
     environment:
+      # Optional: Set custom database settings
+      # DB_MYSQL_HOST: "nginx-proxy-manager-db"
+      # DB_MYSQL_PORT: 3306
+      # DB_MYSQL_USER: "npm"
+      # DB_MYSQL_PASSWORD: "${NPM_DB_PASSWORD}"
+      # DB_MYSQL_NAME: "npm"
+      
+      # Use SQLite by default (simpler setup)
       DISABLE_IPV6: 'true'
     volumes:
       - npm_data:/data
       - npm_letsencrypt:/etc/letsencrypt
+      # Optional: Custom nginx configurations
+      - ./config/nginx-proxy-manager:/data/nginx/custom:ro
     networks:
       - spendly-network
+      - npm-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:81/api"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # Optional: MySQL database for Nginx Proxy Manager (uncomment if you prefer MySQL over SQLite)
+  # nginx-proxy-manager-db:
+  #   image: 'mysql:8.0'
+  #   container_name: spendly-nginx-proxy-manager-db
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: "${NPM_DB_ROOT_PASSWORD}"
+  #     MYSQL_DATABASE: "npm"
+  #     MYSQL_USER: "npm"
+  #     MYSQL_PASSWORD: "${NPM_DB_PASSWORD}"
+  #   volumes:
+  #     - npm_mysql_data:/var/lib/mysql
+  #   networks:
+  #     - npm-network
+
   # Database
   database:
     image: postgres:15-alpine
@@ -51,6 +71,9 @@ services:
       start_period: 30s
     networks:
       - spendly-network
+    # Remove external port exposure since we're using proxy manager
+    # ports:
+    #   - "5432:5432"
 
   # Backend Service
   backend:
@@ -98,7 +121,7 @@ services:
     networks:
       - spendly-network
 
-  # Frontend Service
+  # Frontend Service - Updated for proxy manager
   frontend:
     build:
       context: https://github.com/Ayoubl96/Spendly.git#main:frontend
@@ -123,8 +146,25 @@ services:
     networks:
       - spendly-network
 
+  # Watchtower for automatic updates (optional)
+  watchtower:
+    image: containrrr/watchtower
+    container_name: spendly-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=86400  # Check every 24 hours
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=false
+    networks:
+      - spendly-network
+
 networks:
   spendly-network:
+    driver: bridge
+  npm-network:
     driver: bridge
 
 volumes:
@@ -138,3 +178,5 @@ volumes:
     driver: local
   npm_letsencrypt:
     driver: local
+  # npm_mysql_data:  # Uncomment if using MySQL for NPM
+  #   driver: local
