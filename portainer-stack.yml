@@ -102,7 +102,7 @@ services:
     environment:
       - POSTGRES_DB=spendly_prod
       - POSTGRES_USER=spendly_user
-      - POSTGRES_PASSWORD=CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION
+      - POSTGRES_PASSWORD=88gv^rt8Lkv&&ffNrwy2iV
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -133,7 +133,7 @@ services:
       - PGHOST=database
       - PGDATABASE=spendly_prod
       - PGUSER=spendly_user
-      - PGPASSWORD=CHANGE_THIS_STRONG_PASSWORD_FOR_PRODUCTION
+      - PGPASSWORD=88gv^rt8Lkv&&ffNrwy2iV
     volumes:
       - database_backups:/backups
       - upload_data:/uploads:ro
