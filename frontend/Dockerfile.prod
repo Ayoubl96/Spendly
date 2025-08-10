@@ -23,6 +23,9 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
+# Print the environment variables for debugging
+RUN echo "--- Build Environment Variables ---" && printenv && echo "--- --------------------------- ---"
+
 # Build the application
 RUN npm run build
 
