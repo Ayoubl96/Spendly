@@ -55,7 +55,7 @@ services:
   # Backend Service
   backend:
     build:
-      context: https://github.com/Ayoubl96/Spendly.git#main:backend
+      context: ./backend
       dockerfile: Dockerfile.prod
     container_name: spendly-backend
     # Remove external port exposure - only accessible via proxy manager
@@ -79,9 +79,9 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-https://spendly.ayoublefhim.com}
       - CORS_CREDENTIALS=true
       - FRONTEND_URL=${FRONTEND_URL:-https://spendly.ayoublefhim.com}
-      - BACKEND_URL=${BACKEND_URL:-https://spendly.ayoublefhim.com}
+      - BACKEND_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}
       - UPLOAD_PATH=/app/uploads
-      - UPLOAD_URL=${BACKEND_URL:-https://spendly.ayoublefhim.com}/uploads
+      - UPLOAD_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}/uploads
     volumes:
       - uploads_data:/app/uploads
       - logs_data:/app/logs
@@ -101,12 +101,12 @@ services:
   # Frontend Service
   frontend:
     build:
-      context: https://github.com/Ayoubl96/Spendly.git#main:frontend
+      context: ./frontend
       dockerfile: Dockerfile.prod
       args:
         - CI=false
-        - REACT_APP_API_URL=${BACKEND_URL:-https://spendly.ayoublefhim.com}/api/v1
-        - REACT_APP_UPLOAD_URL=${BACKEND_URL:-https://spendly.ayoublefhim.com}/uploads
+        - REACT_APP_API_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}/api/v1
+        - REACT_APP_UPLOAD_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}/uploads
     container_name: spendly-frontend
     # Remove external port exposure - only accessible via proxy manager
     expose:
