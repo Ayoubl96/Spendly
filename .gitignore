@@ -33,9 +33,7 @@ env.test
 env.local
 env.development
 env.production
-env.portainer-simple
-env.nginx-proxy-manager
-env.production-nginx-proxy-manager
+.env-producation
 
 # PyCharm
 .idea/
