@@ -44,9 +44,16 @@ struct ExpensesView: View {
             .navigationTitle("Expenses")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showingFilters = true }) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .foregroundColor(hasActiveFilters ? .blue : .primary)
+                    HStack {
+                        Button(action: { showingFilters = true }) {
+                            Image(systemName: "line.3.horizontal.decrease.circle")
+                                .foregroundColor(hasActiveFilters ? .blue : .primary)
+                        }
+                        
+                        NavigationLink(destination: ExpenseDebugView()) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.orange)
+                        }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -233,10 +240,49 @@ struct ExpensesView: View {
                     .multilineTextAlignment(.center)
             }
             
-            Button("Add Your First Expense") {
-                showingAddExpense = true
+            // Debug info
+            VStack(spacing: 4) {
+                Text("Debug Info:")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.orange)
+                
+                Text("Total expenses: \(expenseStore.expenses.count)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Text("Filtered expenses: \(expenseStore.filteredExpenses.count)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Text("Loading: \(expenseStore.isLoading ? "Yes" : "No")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                if let error = expenseStore.error {
+                    Text("Error: \(error)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                }
             }
-            .buttonStyle(.borderedProminent)
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(8)
+            
+            HStack(spacing: 16) {
+                Button("Add Your First Expense") {
+                    showingAddExpense = true
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button("Refresh") {
+                    Task {
+                        await loadData()
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)

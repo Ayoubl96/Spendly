@@ -202,7 +202,13 @@ class APIService: ObservableObject {
             }
         }
         
+        print("🌐 APIService: Fetching expenses from \(baseURL)\(endpoint)")
+        print("🔐 APIService: Auth token present: \(authToken != nil)")
+        
         let request = try createRequest(endpoint: endpoint)
+        print("📤 APIService: Request URL: \(request.url?.absoluteString ?? "nil")")
+        print("📤 APIService: Request headers: \(request.allHTTPHeaderFields ?? [:])")
+        
         let (data, response) = try await URLSession.shared.data(for: request)
         return try handleResponse(data, response, nil, type: [Expense].self)
     }

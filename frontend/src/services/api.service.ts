@@ -675,7 +675,7 @@ class ApiService {
 
   async getPaymentMethods(includeInactive?: boolean): Promise<PaymentMethod[]> {
     const params = includeInactive ? '?include_inactive=true' : ''
-    const rawPaymentMethods = await this.request<any[]>(`/payment-methods${params}`)
+    const rawPaymentMethods = await this.request<any[]>(`/payment-methods/${params}`)
     return rawPaymentMethods.map(pm => this.mapPaymentMethodFields(pm))
   }
 

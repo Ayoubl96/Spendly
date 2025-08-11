@@ -191,31 +191,62 @@ struct Expense: Codable, Identifiable {
         sharedWith = try container.decodeIfPresent([String].self, forKey: .sharedWith)
         tags = try container.decodeIfPresent([String].self, forKey: .tags)
         
-        // Custom date decoding for backend format: "2025-08-10T15:32:27.210908"
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+        // Flexible date decoding to handle multiple backend formats
+        func parseDate(from string: String, key: CodingKeys) throws -> Date {
+            let formatters = [
+                // ISO8601 with fractional seconds
+                {
+                    let f = DateFormatter()
+                    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+                    f.locale = Locale(identifier: "en_US_POSIX")
+                    f.timeZone = TimeZone(secondsFromGMT: 0)
+                    return f
+                }(),
+                // ISO8601 standard
+                ISO8601DateFormatter(),
+                // Date only format
+                {
+                    let f = DateFormatter()
+                    f.dateFormat = "yyyy-MM-dd"
+                    f.locale = Locale(identifier: "en_US_POSIX")
+                    f.timeZone = TimeZone(secondsFromGMT: 0)
+                    return f
+                }(),
+                // Alternative ISO format
+                {
+                    let f = DateFormatter()
+                    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+                    f.locale = Locale(identifier: "en_US_POSIX")
+                    f.timeZone = TimeZone(secondsFromGMT: 0)
+                    return f
+                }()
+            ]
+            
+            for formatter in formatters {
+                if let date = formatter.date(from: string) {
+                    return date
+                }
+            }
+            
+            // If all formatters fail, try ISO8601DateFormatter with fractional seconds
+            let iso8601 = ISO8601DateFormatter()
+            iso8601.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = iso8601.date(from: string) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Date string '\(string)' does not match any expected format")
+        }
         
-        // Decode expense date
+        // Decode dates
         let expenseDateString = try container.decode(String.self, forKey: .expenseDate)
-        guard let expenseDateParsed = dateFormatter.date(from: expenseDateString) else {
-            throw DecodingError.dataCorruptedError(forKey: .expenseDate, in: container, debugDescription: "Date string does not match expected format")
-        }
-        expenseDate = expenseDateParsed
+        expenseDate = try parseDate(from: expenseDateString, key: .expenseDate)
         
-        // Decode created and updated dates
         let createdAtString = try container.decode(String.self, forKey: .createdAt)
-        guard let createdAtDate = dateFormatter.date(from: createdAtString) else {
-            throw DecodingError.dataCorruptedError(forKey: .createdAt, in: container, debugDescription: "Date string does not match expected format")
-        }
-        createdAt = createdAtDate
+        createdAt = try parseDate(from: createdAtString, key: .createdAt)
         
         let updatedAtString = try container.decode(String.self, forKey: .updatedAt)
-        guard let updatedAtDate = dateFormatter.date(from: updatedAtString) else {
-            throw DecodingError.dataCorruptedError(forKey: .updatedAt, in: container, debugDescription: "Date string does not match expected format")
-        }
-        updatedAt = updatedAtDate
+        updatedAt = try parseDate(from: updatedAtString, key: .updatedAt)
     }
 }
 
@@ -271,6 +302,29 @@ struct ExpenseFilters {
     var search: String?
     var isShared: Bool?
     var tags: [String]?
+}
+
+extension ExpenseFilters: CustomStringConvertible {
+    var description: String {
+        var parts: [String] = []
+        if startDate != nil { parts.append("startDate") }
+        if endDate != nil { parts.append("endDate") }
+        if categoryId != nil { parts.append("categoryId") }
+        if subcategoryId != nil { parts.append("subcategoryId") }
+        if currency != nil { parts.append("currency") }
+        if paymentMethod != nil { parts.append("paymentMethod") }
+        if minAmount != nil { parts.append("minAmount") }
+        if maxAmount != nil { parts.append("maxAmount") }
+        if search != nil { parts.append("search") }
+        if isShared != nil { parts.append("isShared") }
+        if tags != nil { parts.append("tags") }
+        
+        if parts.isEmpty {
+            return "ExpenseFilters(no filters)"
+        } else {
+            return "ExpenseFilters(\(parts.joined(separator: ", ")))"
+        }
+    }
 }
 
 struct ExpenseSummary: Codable {

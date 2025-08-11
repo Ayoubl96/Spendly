@@ -40,9 +40,13 @@ class ExpenseStore: ObservableObject {
         error = nil
         
         do {
+            print("🔄 ExpenseStore: Fetching expenses with filters: \(filters)")
             expenses = try await apiService.getExpenses(filters: filters)
+            print("✅ ExpenseStore: Received \(expenses.count) expenses")
             applyFilters()
+            print("📊 ExpenseStore: After filtering: \(filteredExpenses.count) expenses")
         } catch {
+            print("❌ ExpenseStore: Error fetching expenses: \(error)")
             self.error = error.localizedDescription
         }
         
