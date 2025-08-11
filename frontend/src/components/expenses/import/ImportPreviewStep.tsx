@@ -16,9 +16,87 @@ import {
 import { ExpenseImportPreviewData, ImportExpenseData, CategoryTree } from '../../../types/api.types';
 import { apiService } from '../../../services/api.service';
 
+// Mini component for editing expense tags
+interface ExpenseTagEditorProps {
+  tags: string[];
+  onTagsChange: (tags: string[]) => void;
+  disabled?: boolean;
+}
+
+const ExpenseTagEditor: React.FC<ExpenseTagEditorProps> = ({ tags, onTagsChange, disabled }) => {
+  const [newTag, setNewTag] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      onTagsChange([...tags, newTag.trim()]);
+      setNewTag('');
+      setIsEditing(false);
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    onTagsChange(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  return (
+    <div className="w-full max-w-48">
+      {/* Display existing tags */}
+      <div className="flex flex-wrap gap-1 mb-2">
+        {tags.map((tag, idx) => (
+          <span
+            key={idx}
+            className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800"
+          >
+            {tag}
+            {!disabled && (
+              <button
+                onClick={() => handleRemoveTag(tag)}
+                className="ml-1 text-gray-600 hover:text-gray-800"
+              >
+                ×
+              </button>
+            )}
+          </span>
+        ))}
+      </div>
+      
+      {/* Add new tag */}
+      {!disabled && (
+        <div className="flex items-center gap-1">
+          {isEditing ? (
+            <>
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                onBlur={() => {
+                  if (newTag.trim()) handleAddTag();
+                  else setIsEditing(false);
+                }}
+                placeholder="Add tag..."
+                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoFocus
+              />
+            </>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-xs text-blue-600 hover:text-blue-800"
+            >
+              + Add tag
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface ImportPreviewStepProps {
   previewData: ExpenseImportPreviewData;
-  onImportConfirm: (expenses: ImportExpenseData[], createRules: boolean) => void;
+  onImportConfirm: (expenses: ImportExpenseData[], createRules: boolean, genericTags?: string[]) => void;
   onBack: () => void;
   isLoading: boolean;
 }
@@ -36,6 +114,8 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
   const [bulkSubcategoryId, setBulkSubcategoryId] = useState<string>('');
   const [selectedExpenses, setSelectedExpenses] = useState<Set<number>>(new Set());
   const [categories, setCategories] = useState<CategoryTree[]>([]);
+  const [genericTags, setGenericTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState<string>('');
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -115,12 +195,27 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
     setSelectedExpenses(new Set());
   }, []);
 
+  const handleAddGenericTag = useCallback(() => {
+    if (newTag.trim() && !genericTags.includes(newTag.trim())) {
+      setGenericTags(prev => [...prev, newTag.trim()]);
+      setNewTag('');
+    }
+  }, [newTag, genericTags]);
+
+  const handleRemoveGenericTag = useCallback((tagToRemove: string) => {
+    setGenericTags(prev => prev.filter(tag => tag !== tagToRemove));
+  }, []);
+
+  const handleExpenseTagUpdate = useCallback((index: number, tags: string[]) => {
+    handleExpenseUpdate(index, { tags });
+  }, [handleExpenseUpdate]);
+
   const handleConfirmImport = useCallback(() => {
     const expensesToImport = expenses.filter(expense => 
       !expense.excluded && !expense.is_duplicate
     );
-    onImportConfirm(expensesToImport, createRules);
-  }, [expenses, createRules, onImportConfirm]);
+    onImportConfirm(expensesToImport, createRules, genericTags);
+  }, [expenses, createRules, genericTags, onImportConfirm]);
 
   const formatCurrency = (amount: number, currency: string = 'EUR') => {
     return new Intl.NumberFormat('en-US', {
@@ -143,14 +238,7 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
     return 'text-red-600 bg-red-100';
   };
 
-  const getCategoryName = (categoryId: string) => {
-    return categories.find(cat => cat.id === categoryId)?.name || '';
-  };
 
-  const getSubcategoryName = (categoryId: string, subcategoryId: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
-    return category?.subcategories?.find(sub => sub.id === subcategoryId)?.name || '';
-  };
 
   if (!previewData.success) {
     return (
@@ -282,6 +370,56 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
         </div>
       </Card>
 
+      {/* Generic Tags Section */}
+      <Card className="p-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Generic Tags (Applied to All Imported Expenses)
+        </h3>
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddGenericTag()}
+              placeholder="Add a tag (e.g., business, personal, trip2024)"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <Button
+              onClick={handleAddGenericTag}
+              disabled={!newTag.trim() || genericTags.includes(newTag.trim())}
+              size="sm"
+            >
+              Add Tag
+            </Button>
+          </div>
+          
+          {/* Display current generic tags */}
+          {genericTags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {genericTags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleRemoveGenericTag(tag)}
+                    className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-200 hover:bg-blue-300 text-blue-600"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          
+          <p className="text-sm text-gray-500">
+            These tags will be automatically added to all imported expenses, along with the default import tags.
+          </p>
+        </div>
+      </Card>
+
       {/* Expenses Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
@@ -313,6 +451,9 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Subcategory
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tags
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Confidence
@@ -380,6 +521,13 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
                       placeholder="Select subcategory..."
                       disabled={expense.is_duplicate || expense.excluded || !expense.category_id}
                       height="h-8"
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <ExpenseTagEditor 
+                      tags={expense.tags || []}
+                      onTagsChange={(tags) => handleExpenseTagUpdate(index, tags)}
+                      disabled={expense.is_duplicate || expense.excluded}
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

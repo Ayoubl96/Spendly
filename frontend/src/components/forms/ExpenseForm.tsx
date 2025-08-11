@@ -8,10 +8,10 @@ import { CurrencyAmountDisplay } from '../ui/currency-amount-display'
 import { CategorySubcategorySelect } from '../ui/category-select'
 import { useAuthStore } from '../../stores/auth.store'
 import { useExpenseStore } from '../../stores/expense.store'
-import { useBudgetStore } from '../../stores/budget.store'
+
 import { useCurrencyConversion } from '../../hooks/useCurrencyConversion'
-import { CreateExpenseRequest, Budget } from '../../types/api.types'
-import { X, AlertTriangle, CheckCircle, PiggyBank } from 'lucide-react'
+import { CreateExpenseRequest, Expense } from '../../types/api.types'
+import { X } from 'lucide-react'
 import { format } from 'date-fns'
 import { isSameCurrency, safeNumberConversion } from '../../utils/currency'
 
@@ -19,18 +19,18 @@ interface ExpenseFormProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (expense: CreateExpenseRequest) => void
+  editExpense?: Expense | null
 }
 
-export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
+export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseFormProps) {
   const { user } = useAuthStore()
   const { categoryTree, users, currencies, fetchCategoryTree, fetchUsers, fetchCurrencies } = useExpenseStore()
-  const { budgets, fetchBudgets, getBudgetPerformance, budgetPerformances } = useBudgetStore()
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
     currency: user?.defaultCurrency || 'EUR',
-    category: '',
-    subcategory: '',
+    category: undefined as string | undefined,
+    subcategory: undefined as string | undefined,
     amount_in_base_currency: '',
     exchangeRate: '',
     expenseDate: new Date().toISOString().split('T')[0],
@@ -55,7 +55,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
     enabled: !hasManualConversion && !isSameCurrency(formData.currency, user?.defaultCurrency || 'EUR')
   })
 
-  // Fetch categories, users, currencies, and budgets when component mounts
+  // Fetch categories, users, and currencies when component mounts
   useEffect(() => {
     if (isOpen) {
       if (categoryTree.length === 0) {
@@ -67,11 +67,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
       if (currencies.length === 0) {
         fetchCurrencies()
       }
-      if (budgets.length === 0) {
-        fetchBudgets()
-      }
     }
-  }, [isOpen, categoryTree.length, users.length, currencies.length, budgets.length, fetchCategoryTree, fetchUsers, fetchCurrencies, fetchBudgets])
+  }, [isOpen, categoryTree.length, users.length, currencies.length, fetchCategoryTree, fetchUsers, fetchCurrencies])
 
   // Update conversion data when API data changes
   useEffect(() => {
@@ -82,10 +79,94 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
     }
   }, [conversionData, hasManualConversion])
 
-  // Reset manual conversion when currency changes
+  // Reset manual conversion when currency changes (but not during initial form load)
+  const [isFormInitialized, setIsFormInitialized] = useState(false)
+  
   useEffect(() => {
-    setHasManualConversion(false)
-  }, [formData.currency, user?.defaultCurrency])
+    if (isOpen) {
+      setIsFormInitialized(true)
+    } else {
+      setIsFormInitialized(false)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    // Only reset manual conversion if form is initialized and currency actually changed by user
+    if (isFormInitialized && !editExpense) {
+      setHasManualConversion(false)
+    }
+  }, [formData.currency, isFormInitialized, editExpense])
+
+  // Populate form data when editing an expense
+  useEffect(() => {
+    if (!isOpen) return
+
+    const defaultCurrency = user?.defaultCurrency || 'EUR'
+    
+    if (editExpense) {
+      console.log('Editing expense with data:', editExpense)
+      console.log('Category tree available:', categoryTree.length > 0)
+      
+      // Only set form data if category tree is loaded (for edit mode) or if it's a new expense
+      if (categoryTree.length > 0 || !editExpense.categoryId) {
+        const categoryId = editExpense.categoryId || undefined
+        const subcategoryId = editExpense.subcategoryId || undefined
+        
+        console.log('Setting form data with categories:', { categoryId, subcategoryId })
+        
+        setFormData({
+          description: editExpense.description ?? '',
+          amount: editExpense.amount?.toString() ?? '',
+          currency: editExpense.currency ?? defaultCurrency,
+          category: categoryId,
+          subcategory: subcategoryId,
+          amount_in_base_currency: editExpense.amountInBaseCurrency?.toString() ?? '',
+          exchangeRate: editExpense.exchangeRate?.toString() ?? '',
+          expenseDate: editExpense.expenseDate ?? new Date().toISOString().split('T')[0],
+          paymentMethod: editExpense.paymentMethod ?? 'cash',
+          notes: editExpense.notes ?? '',
+          location: editExpense.location ?? '',
+          vendor: editExpense.vendor ?? '',
+          isShared: editExpense.isShared ?? false,
+          tags: editExpense.tags?.join(', ') ?? '',
+          sharedWith: editExpense.sharedWith ?? []
+        })
+
+        // Set conversion data if available
+        if (editExpense.amountInBaseCurrency && editExpense.exchangeRate) {
+          setConvertedAmount(parseFloat(editExpense.amountInBaseCurrency.toString()))
+          setExchangeRate(parseFloat(editExpense.exchangeRate.toString()))
+          setHasManualConversion(true)
+        } else {
+          setConvertedAmount(0)
+          setExchangeRate(1)
+          setHasManualConversion(false)
+        }
+      }
+    } else {
+      // Reset form for new expense
+      setFormData({
+        description: '',
+        amount: '',
+        currency: defaultCurrency,
+        category: undefined,
+        subcategory: undefined,
+        amount_in_base_currency: '',
+        exchangeRate: '',
+        expenseDate: new Date().toISOString().split('T')[0],
+        paymentMethod: 'cash',
+        notes: '',
+        location: '',
+        vendor: '',
+        isShared: false,
+        tags: '',
+        sharedWith: []
+      })
+      setConvertedAmount(0)
+      setExchangeRate(1)
+      setHasManualConversion(false)
+    }
+  }, [editExpense?.id, isOpen, categoryTree.length]) // Depend on categoryTree.length to wait for it to load
 
   const handleConvertedAmountChange = (amount: number, rate: number) => {
     console.log('Manual conversion edit:', { amount, rate, hasManualConversion: true })
@@ -94,60 +175,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
     setHasManualConversion(true)
   }
 
-  // Get relevant budgets for this expense
-  const getRelevantBudgets = () => {
-    const expenseDate = new Date(formData.expenseDate)
-    const expenseAmount = parseFloat(formData.amount) || 0
-    
-    return budgets.filter(budget => {
-      if (!budget.is_active) return false
-      
-      // Check if expense date falls within budget period
-      const budgetStart = new Date(budget.startDate)
-      const budgetEnd = budget.endDate ? new Date(budget.endDate) : null
-      
-      if (expenseDate < budgetStart) return false
-      if (budgetEnd && expenseDate > budgetEnd) return false
-      
-      // Check if budget is for the same category or is a general budget
-      if (budget.categoryId && formData.category && budget.categoryId !== formData.category) return false
-      
-      return true
-    })
-  }
 
-  const relevantBudgets = getRelevantBudgets()
-  const expenseAmount = parseFloat(formData.amount) || 0
-
-  // Load budget performance data for relevant budgets
-  useEffect(() => {
-    relevantBudgets.forEach(budget => {
-      if (!budgetPerformances[budget.id]) {
-        getBudgetPerformance(budget.id).catch(console.error)
-      }
-    })
-  }, [relevantBudgets, budgetPerformances, getBudgetPerformance])
-
-  // Calculate budget impact
-  const getBudgetImpact = (budget: Budget) => {
-    const performance = budgetPerformances[budget.id]
-    if (!performance) return null
-    
-    const newSpent = performance.spent + expenseAmount
-    const newPercentage = (newSpent / budget.amount) * 100
-    const willExceedAlert = newPercentage >= budget.alertThreshold
-    const willExceedBudget = newSpent > budget.amount
-    
-    return {
-      currentSpent: performance.spent,
-      newSpent,
-      currentPercentage: performance.percentage_used,
-      newPercentage,
-      willExceedAlert,
-      willExceedBudget,
-      budgetRemaining: budget.amount - newSpent
-    }
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -161,8 +189,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
       amount: parseFloat(formData.amount),
       currency: formData.currency,
       expenseDate: formData.expenseDate,
-      categoryId: formData.category || undefined,
-      subcategoryId: formData.subcategory || undefined,
+      categoryId: formData.category,
+      subcategoryId: formData.subcategory,
       amount_in_base_currency: parseFloat(formData.amount_in_base_currency),
       exchange_rate: parseFloat(formData.exchangeRate),
       paymentMethod: formData.paymentMethod as 'cash' | 'card' | 'bank_transfer' | 'other',
@@ -195,30 +223,6 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
     }
 
     onSubmit(submissionData)
-
-    // Reset form
-    setFormData({
-      description: '',
-      amount: '',
-      currency: user?.defaultCurrency || 'EUR',
-      category: '',
-      subcategory: '',
-      amount_in_base_currency: '',
-      exchangeRate: '',
-      expenseDate: new Date().toISOString().split('T')[0],
-      paymentMethod: 'cash',
-      notes: '',
-      location: '',
-      vendor: '',
-      isShared: false,
-      tags: '',
-      sharedWith: []
-    })
-    
-    // Reset conversion state
-    setConvertedAmount(0)
-    setExchangeRate(1)
-    setHasManualConversion(false)
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -278,8 +282,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
       <Card className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Add New Expense</CardTitle>
-            <CardDescription>Track your spending</CardDescription>
+            <CardTitle>{editExpense ? 'Edit Expense' : 'Add New Expense'}</CardTitle>
+            <CardDescription>{editExpense ? 'Update your expense details' : 'Track your spending'}</CardDescription>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -371,11 +375,21 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
 
             {/* Categories */}
             <CategorySubcategorySelect
+              key={`category-select-${editExpense?.id || 'new'}-${formData.category}-${formData.subcategory}`}
               categoryTree={categoryTree}
               selectedCategoryId={formData.category}
               selectedSubcategoryId={formData.subcategory}
-              onCategoryChange={(categoryId) => setFormData(prev => ({ ...prev, category: categoryId || '' }))}
-              onSubcategoryChange={(subcategoryId) => setFormData(prev => ({ ...prev, subcategory: subcategoryId || '' }))}
+              onCategoryChange={(categoryId) => {
+                console.log('Category changed to:', categoryId)
+                setFormData(prev => ({ 
+                  ...prev, 
+                  category: categoryId
+                }))
+              }}
+              onSubcategoryChange={(subcategoryId) => {
+                console.log('Subcategory changed to:', subcategoryId)
+                setFormData(prev => ({ ...prev, subcategory: subcategoryId }))
+              }}
               categoryLabel="Category"
               subcategoryLabel="Subcategory"
               categoryPlaceholder="Select category"
@@ -383,154 +397,10 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
               height="h-10"
               required={true}
             />
+            
 
-            {/* Budget Impact Information */}
-            {relevantBudgets.length > 0 && expenseAmount > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium flex items-center gap-2">
-                  <PiggyBank className="h-4 w-4" />
-                  Budget Impact
-                </h3>
-                <div className="space-y-2">
-                  {relevantBudgets.map((budget) => {
-                    const impact = getBudgetImpact(budget)
-                    if (!impact) return null
 
-                    return (
-                      <div 
-                        key={budget.id} 
-                        className={`p-3 rounded-lg border ${
-                          impact.willExceedBudget 
-                            ? 'border-red-200 bg-red-50' 
-                            : impact.willExceedAlert 
-                            ? 'border-yellow-200 bg-yellow-50' 
-                            : 'border-green-200 bg-green-50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-medium text-sm">{budget.name}</h4>
-                            <p className="text-xs text-gray-600">
-                              {budget.periodType} budget
-                              {budget.categoryId && (
-                                <span> • Category specific</span>
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {impact.willExceedBudget ? (
-                              <AlertTriangle className="h-4 w-4 text-red-600" />
-                            ) : impact.willExceedAlert ? (
-                              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            )}
-                          </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                          <div>
-                            <span className="text-gray-600">Current Spent:</span>
-                            <div className="font-medium">
-                              <CurrencyAmountDisplay 
-                                amount={impact.currentSpent} 
-                                currency={budget.currency} 
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-gray-600">After This Expense:</span>
-                            <div className={`font-medium ${
-                              impact.willExceedBudget ? 'text-red-600' : 'text-gray-900'
-                            }`}>
-                              <CurrencyAmountDisplay 
-                                amount={impact.newSpent} 
-                                currency={budget.currency} 
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-gray-600">Budget Usage</span>
-                            <span className="font-medium">
-                              {Math.round(impact.currentPercentage)}% → {Math.round(impact.newPercentage)}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${
-                                impact.newPercentage > 100 
-                                  ? 'bg-red-500' 
-                                  : impact.newPercentage >= budget.alertThreshold 
-                                  ? 'bg-yellow-500' 
-                                  : 'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min(100, Math.max(0, impact.newPercentage))}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {impact.willExceedBudget && (
-                          <div className="mt-2 text-xs text-red-700 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            <span>
-                              This expense will exceed your budget by{' '}
-                              <CurrencyAmountDisplay 
-                                amount={Math.abs(impact.budgetRemaining)} 
-                                currency={budget.currency} 
-                                className="font-medium"
-                              />
-                            </span>
-                          </div>
-                        )}
-
-                        {!impact.willExceedBudget && impact.willExceedAlert && (
-                          <div className="mt-2 text-xs text-yellow-700 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            <span>
-                              This expense will trigger your {budget.alertThreshold}% alert threshold
-                            </span>
-                          </div>
-                        )}
-
-                        {!impact.willExceedBudget && !impact.willExceedAlert && (
-                          <div className="mt-2 text-xs text-green-700 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            <span>
-                              You'll have{' '}
-                              <CurrencyAmountDisplay 
-                                amount={impact.budgetRemaining} 
-                                currency={budget.currency} 
-                                className="font-medium"
-                              />
-                              {' '}remaining in this budget
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* No Budget Warning */}
-            {relevantBudgets.length === 0 && budgets.length > 0 && expenseAmount > 0 && (
-              <div className="p-3 rounded-lg border border-blue-200 bg-blue-50">
-                <div className="flex items-center gap-2 text-blue-800">
-                  <PiggyBank className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    No matching budgets found for this expense
-                  </span>
-                </div>
-                <p className="text-xs text-blue-700 mt-1">
-                  Consider creating a budget for{' '}
-                  {formData.category ? 'this category' : 'your expenses'} to better track your spending.
-                </p>
-              </div>
-            )}
 
             {/* Payment & Location */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -665,7 +535,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit }: ExpenseFormProps) {
                 Cancel
               </Button>
               <Button type="submit" className="flex-1">
-                Add Expense
+                {editExpense ? 'Update Expense' : 'Add Expense'}
               </Button>
             </div>
           </form>

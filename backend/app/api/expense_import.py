@@ -97,6 +97,7 @@ async def commit_expense_import(
     try:
         expenses_data = import_data.get('expenses', [])
         create_rules = import_data.get('create_rules', True)
+        generic_tags = import_data.get('generic_tags', [])
         
         if not expenses_data:
             raise HTTPException(
@@ -123,6 +124,20 @@ async def commit_expense_import(
                 if expense_data.get('excluded', False):
                     continue
                 
+                # Prepare tags - combine automatic, generic, and expense-specific tags
+                expense_tags = ['import', f"import:{datetime.now().strftime('%Y-%m')}"]
+                
+                # Add generic tags if provided
+                if generic_tags:
+                    expense_tags.extend(generic_tags)
+                
+                # Add expense-specific tags if provided
+                if expense_data.get('tags'):
+                    expense_tags.extend(expense_data.get('tags'))
+                
+                # Remove duplicates while preserving order
+                expense_tags = list(dict.fromkeys(expense_tags))
+                
                 # Create expense object
                 expense_create = ExpenseCreate(
                     amount=Decimal(str(expense_data['amount'])),
@@ -134,7 +149,7 @@ async def commit_expense_import(
                     payment_method=expense_data.get('payment_method'),
                     vendor=expense_data.get('vendor'),
                     notes=expense_data.get('notes'),
-                    tags=['import', f"import:{datetime.now().strftime('%Y-%m')}"]
+                    tags=expense_tags
                 )
                 
                 # Handle currency conversion

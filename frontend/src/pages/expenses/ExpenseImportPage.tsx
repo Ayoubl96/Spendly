@@ -81,13 +81,14 @@ export const ExpenseImportPage: React.FC = () => {
     }
   }, []);
 
-  const handleImportConfirm = useCallback(async (expensesToImport: ImportExpenseData[], createRules: boolean) => {
+  const handleImportConfirm = useCallback(async (expensesToImport: ImportExpenseData[], createRules: boolean, genericTags?: string[]) => {
     setIsLoading(true);
 
     try {
       const result = await apiService.commitExpenseImport({
         expenses: expensesToImport,
-        create_rules: createRules
+        create_rules: createRules,
+        generic_tags: genericTags
       });
       setImportResult(result);
       setCurrentStep(2);

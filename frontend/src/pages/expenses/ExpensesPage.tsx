@@ -20,12 +20,13 @@ export function ExpensesPage() {
     fetchExpenses, 
     fetchCategoryTree, 
     createExpense, 
+    updateExpense,
     deleteExpense, 
     isLoading,
     filters 
   } = useExpenseStore()
   const [isExpenseFormOpen, setIsExpenseFormOpen] = useState(false)
-  const [, setCurrentEditExpense] = useState<any>(null)
+  const [currentEditExpense, setCurrentEditExpense] = useState<any>(null)
   const [viewMode, setViewMode] = useState<'summary' | 'list'>('summary')
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function ExpensesPage() {
     try {
       await createExpense(expenseData)
       setIsExpenseFormOpen(false)
+      setCurrentEditExpense(null)
       fetchExpenses()
     } catch (error) {
       console.error('Failed to add expense:', error)
@@ -44,9 +46,25 @@ export function ExpensesPage() {
     }
   }
 
+  const handleUpdateExpense = async (expenseData: CreateExpenseRequest) => {
+    if (!currentEditExpense?.id) return
+    
+    try {
+      await updateExpense(currentEditExpense.id, expenseData)
+      setIsExpenseFormOpen(false)
+      setCurrentEditExpense(null)
+      fetchExpenses()
+    } catch (error) {
+      console.error('Failed to update expense:', error)
+      alert('Failed to update expense. Please try again.')
+    }
+  }
+
+  const handleExpenseSubmit = currentEditExpense ? handleUpdateExpense : handleAddExpense
+
   const handleEditExpense = (expense: any) => {
-    // TODO: Implement editing functionality
-    alert('Edit functionality coming soon!')
+    setCurrentEditExpense(expense)
+    setIsExpenseFormOpen(true)
   }
 
   const handleDeleteExpense = async (id: string) => {
@@ -143,7 +161,10 @@ export function ExpensesPage() {
             </Button>
           </div>
           
-          <Button className="gap-2" onClick={() => setIsExpenseFormOpen(true)}>
+          <Button className="gap-2" onClick={() => {
+            setCurrentEditExpense(null)
+            setIsExpenseFormOpen(true)
+          }}>
             <PlusCircle className="h-4 w-4" />
             Add Expense
           </Button>
@@ -213,7 +234,10 @@ export function ExpensesPage() {
                       : 'Start tracking your expenses by adding your first transaction.'
                     }
                   </p>
-                  <Button className="gap-2" onClick={() => setIsExpenseFormOpen(true)}>
+                  <Button className="gap-2" onClick={() => {
+                    setCurrentEditExpense(null)
+                    setIsExpenseFormOpen(true)
+                  }}>
                     <PlusCircle className="h-4 w-4" />
                     Add Your First Expense
                   </Button>
@@ -231,7 +255,8 @@ export function ExpensesPage() {
           setIsExpenseFormOpen(false)
           setCurrentEditExpense(null)
         }}
-        onSubmit={handleAddExpense}
+        onSubmit={handleExpenseSubmit}
+        editExpense={currentEditExpense}
       />
     </div>
   )

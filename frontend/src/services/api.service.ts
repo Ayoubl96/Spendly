@@ -233,7 +233,23 @@ class ApiService {
   async updateExpense(id: string, data: Partial<CreateExpenseRequest>): Promise<Expense> {
     const rawExpense = await this.request<any>(`/expenses/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        amount: data.amount,
+        currency: data.currency,
+        description: data.description,
+        expense_date: data.expenseDate,
+        amount_in_base_currency: data.amount_in_base_currency,
+        exchange_rate: data.exchange_rate,
+        category_id: data.categoryId,
+        subcategory_id: data.subcategoryId,
+        payment_method: data.paymentMethod,
+        notes: data.notes,
+        location: data.location,
+        vendor: data.vendor,
+        is_shared: data.isShared,
+        shared_with: data.sharedWith,
+        tags: data.tags,
+      }),
     })
     return this.mapExpenseFields(rawExpense)
   }

@@ -436,6 +436,7 @@ export interface ImportExpenseData {
   is_duplicate: boolean
   excluded?: boolean
   create_rule?: boolean
+  tags?: string[]
   raw_data?: any
 }
 
@@ -455,6 +456,7 @@ export interface ExpenseImportResult {
 export interface ExpenseImportCommitRequest {
   expenses: ImportExpenseData[]
   create_rules: boolean
+  generic_tags?: string[]
 }
 
 // Categorization Rule Types
