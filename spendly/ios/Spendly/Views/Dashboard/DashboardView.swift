@@ -195,43 +195,100 @@ struct SummaryCard: View {
 
 struct ExpenseRowView: View {
     let expense: Expense
+    let onTap: ((Expense) -> Void)?
+    let onEdit: ((Expense) -> Void)?
+    let onDelete: ((Expense) -> Void)?
     @EnvironmentObject var categoryStore: CategoryStore
+    @State private var showingActionSheet = false
+    
+    init(expense: Expense, onTap: ((Expense) -> Void)? = nil, onEdit: ((Expense) -> Void)? = nil, onDelete: ((Expense) -> Void)? = nil) {
+        self.expense = expense
+        self.onTap = onTap
+        self.onEdit = onEdit
+        self.onDelete = onDelete
+    }
     
     var body: some View {
-        HStack {
-            Image(systemName: categoryStore.getCategoryIcon(for: expense.categoryId))
-                .foregroundColor(categoryStore.getCategoryColor(for: expense.categoryId))
-                .frame(width: 40, height: 40)
-                .background(categoryStore.getCategoryColor(for: expense.categoryId).opacity(0.1))
-                .cornerRadius(8)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(expense.description)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
+        Button(action: { onTap?(expense) }) {
+            HStack(spacing: 12) {
+                // Category Icon
+                Image(systemName: categoryStore.getCategoryIcon(for: expense.categoryId))
+                    .foregroundColor(.white)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(categoryStore.getCategoryColor(for: expense.categoryId))
+                            .shadow(color: categoryStore.getCategoryColor(for: expense.categoryId).opacity(0.3), radius: 2, x: 0, y: 1)
+                    )
                 
-                HStack {
-                    Text(categoryStore.getCategoryName(for: expense.categoryId))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(expense.description)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
                     
-                    Text("•")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text(categoryStore.getCategoryName(for: expense.categoryId))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        if let vendor = expense.vendor, !vendor.isEmpty {
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Text(vendor)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer(minLength: 0)
+                        
+                        Text(expense.expenseDate.shortDate)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(expense.amount.formatted(currency: expense.currency))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
                     
-                    Text(expense.expenseDate.shortDate)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if let paymentMethod = expense.paymentMethod {
+                        Text(paymentMethod.displayName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                if onEdit != nil || onDelete != nil {
+                    Button(action: { showingActionSheet = true }) {
+                        Image(systemName: "ellipsis")
+                            .foregroundColor(.secondary)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
-            
-            Spacer()
-            
-            Text(expense.amount.formatted(currency: expense.currency))
-                .font(.subheadline)
-                .fontWeight(.semibold)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 4)
         }
-        .padding(.vertical, 8)
+        .buttonStyle(PlainButtonStyle())
+        .actionSheet(isPresented: $showingActionSheet) {
+            ActionSheet(
+                title: Text("Expense Actions"),
+                buttons: [
+                    onEdit != nil ? .default(Text("Edit")) { onEdit?(expense) } : nil,
+                    onDelete != nil ? .destructive(Text("Delete")) { onDelete?(expense) } : nil,
+                    .cancel()
+                ].compactMap { $0 }
+            )
+        }
     }
 }
 
