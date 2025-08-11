@@ -34,7 +34,8 @@ class Expense(Base):
     subcategory_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
     
     # Additional information
-    payment_method = Column(String(50), nullable=True)  # 'cash', 'card', 'bank_transfer', 'other'
+    payment_method = Column(String(50), nullable=True)  # Legacy: 'cash', 'card', 'bank_transfer', 'other'
+    payment_method_id = Column(UUID(as_uuid=True), ForeignKey("user_payment_methods.id"), nullable=True, index=True)
     receipt_url = Column(String(500), nullable=True)  # File path or URL
     notes = Column(Text, nullable=True)
     location = Column(String(200), nullable=True)
@@ -54,8 +55,9 @@ class Expense(Base):
     # Relationships
     user = relationship("User", back_populates="expenses")
     category = relationship("Category", foreign_keys=[category_id], back_populates="expenses")
-    subcategory = relationship("Category", foreign_keys=[subcategory_id])
+    subcategory = relationship("Category", foreign_keys=[subcategory_id], overlaps="subcategory_expenses")
     currency_obj = relationship("Currency", back_populates="expenses")
+    payment_method_obj = relationship("UserPaymentMethod", back_populates="expenses")
     attachments = relationship("ExpenseAttachment", back_populates="expense", lazy="dynamic")
     shared_expense_records = relationship("SharedExpense", back_populates="expense", lazy="dynamic")
     

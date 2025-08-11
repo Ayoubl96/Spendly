@@ -33,6 +33,11 @@ import {
   CreateCategorizationRuleRequest,
   UpdateCategorizationRuleRequest,
   CategorizationRuleStats,
+  PaymentMethod,
+  PaymentMethodWithStats,
+  CreatePaymentMethodRequest,
+  UpdatePaymentMethodRequest,
+  BulkPaymentMethodUpdateRequest
 } from '../types/api.types'
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1'
@@ -171,6 +176,7 @@ class ApiService {
       categoryId: expense.category_id,
       subcategoryId: expense.subcategory_id,
       paymentMethod: expense.payment_method,
+      paymentMethodId: expense.payment_method_id,
       receiptUrl: expense.receipt_url,
       isShared: expense.is_shared,
       sharedWith: expense.shared_with,
@@ -222,6 +228,7 @@ class ApiService {
         category_id: data.categoryId,
         subcategory_id: data.subcategoryId,
         payment_method: data.paymentMethod,
+        payment_method_id: data.paymentMethodId,
         notes: data.notes,
         location: data.location,
         vendor: data.vendor,
@@ -246,6 +253,7 @@ class ApiService {
         category_id: data.categoryId,
         subcategory_id: data.subcategoryId,
         payment_method: data.paymentMethod,
+        payment_method_id: data.paymentMethodId,
         notes: data.notes,
         location: data.location,
         vendor: data.vendor,
@@ -637,6 +645,85 @@ class ApiService {
 
   async getCategorizationRuleStats(): Promise<CategorizationRuleStats> {
     return this.request<CategorizationRuleStats>('/expense-import/rules/stats')
+  }
+
+  // Payment Methods
+  // Helper function to convert snake_case fields to camelCase for payment methods
+  private mapPaymentMethodFields(pm: any): PaymentMethod {
+    return {
+      ...pm,
+      userId: pm.user_id,
+      sortOrder: pm.sort_order,
+      isActive: pm.is_active,
+      isDefault: pm.is_default,
+      canDelete: pm.can_delete,
+      createdAt: pm.created_at,
+      updatedAt: pm.updated_at
+    }
+  }
+
+  private mapPaymentMethodWithStatsFields(pm: any): PaymentMethodWithStats {
+    return {
+      ...this.mapPaymentMethodFields(pm),
+      expenseCount: pm.expense_count,
+      totalAmount: pm.total_amount,
+      lastUsed: pm.last_used
+    }
+  }
+
+  async getPaymentMethods(includeInactive?: boolean): Promise<PaymentMethod[]> {
+    const params = includeInactive ? '?include_inactive=true' : ''
+    const rawPaymentMethods = await this.request<any[]>(`/payment-methods${params}`)
+    return rawPaymentMethods.map(pm => this.mapPaymentMethodFields(pm))
+  }
+
+  async getPaymentMethodsWithStats(includeInactive?: boolean): Promise<PaymentMethodWithStats[]> {
+    const params = includeInactive ? '?include_inactive=true' : ''
+    const rawPaymentMethods = await this.request<any[]>(`/payment-methods/with-stats${params}`)
+    return rawPaymentMethods.map(pm => this.mapPaymentMethodWithStatsFields(pm))
+  }
+
+  async createPaymentMethod(data: CreatePaymentMethodRequest): Promise<PaymentMethod> {
+    const rawPaymentMethod = await this.request<any>('/payment-methods', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+    return this.mapPaymentMethodFields(rawPaymentMethod)
+  }
+
+  async updatePaymentMethod(id: string, data: UpdatePaymentMethodRequest): Promise<PaymentMethod> {
+    const rawPaymentMethod = await this.request<any>(`/payment-methods/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+    return this.mapPaymentMethodFields(rawPaymentMethod)
+  }
+
+  async deletePaymentMethod(id: string, force?: boolean): Promise<{ message: string }> {
+    const params = force ? '?force=true' : ''
+    return this.request<{ message: string }>(`/payment-methods/${id}${params}`, {
+      method: 'DELETE'
+    })
+  }
+
+  async reorderPaymentMethods(data: BulkPaymentMethodUpdateRequest): Promise<PaymentMethod[]> {
+    const rawPaymentMethods = await this.request<any[]>('/payment-methods/reorder', {
+      method: 'POST',
+      body: JSON.stringify({
+        payment_methods: data.paymentMethods.map(pm => ({
+          id: pm.id,
+          sort_order: pm.sortOrder
+        }))
+      })
+    })
+    return rawPaymentMethods.map(pm => this.mapPaymentMethodFields(pm))
+  }
+
+  async createDefaultPaymentMethods(): Promise<PaymentMethod[]> {
+    const rawPaymentMethods = await this.request<any[]>('/payment-methods/create-defaults', {
+      method: 'POST'
+    })
+    return rawPaymentMethods.map(pm => this.mapPaymentMethodFields(pm))
   }
 }
 

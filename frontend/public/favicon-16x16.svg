@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black rounded square background -->
+  <rect x="1" y="1" width="14" height="14" rx="2" ry="2" fill="#000000"/>
+  
+  <!-- Bar chart inside the square (simplified for 16x16) -->
+  <!-- Bar 1: short -->
+  <rect x="4" y="10" width="1.5" height="4" rx="0.75" ry="0.75" fill="#ffffff"/>
+  
+  <!-- Bar 2: medium -->
+  <rect x="6" y="7" width="1.5" height="7" rx="0.75" ry="0.75" fill="#ffffff"/>
+  
+  <!-- Bar 3: medium-short -->
+  <rect x="8" y="8" width="1.5" height="6" rx="0.75" ry="0.75" fill="#ffffff"/>
+  
+  <!-- Bar 4: very short -->
+  <rect x="10" y="12" width="1.5" height="2" rx="0.75" ry="0.75" fill="#ffffff"/>
+  
+  <!-- Bar 5: tall -->
+  <rect x="12" y="5" width="1.5" height="9" rx="0.75" ry="0.75" fill="#ffffff"/>
+</svg>

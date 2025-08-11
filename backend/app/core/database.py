@@ -27,7 +27,7 @@ Base = declarative_base()
 async def init_db():
     """Initialize database (create tables if they don't exist)"""
     # Import all models here to ensure they are registered with SQLAlchemy
-    from app.db.models import user, category, currency, expense, budget, budget_group  # noqa
+    from app.db.models import user, category, currency, expense, budget, budget_group, payment_method  # noqa
     
     # Create all tables
     Base.metadata.create_all(bind=engine)
@@ -67,6 +67,50 @@ async def init_db():
                     ADD CONSTRAINT fk_budgets_budget_group_id
                     FOREIGN KEY (budget_group_id) REFERENCES budget_groups(id)
                     ON DELETE SET NULL;
+                  END IF;
+                END$$;
+                """
+            )
+            
+            # 4) expenses.payment_method_id column (nullable) for user payment methods
+            conn.exec_driver_sql(
+                """
+                ALTER TABLE expenses
+                ADD COLUMN IF NOT EXISTS payment_method_id UUID NULL
+                """
+            )
+            
+            # 5) index for payment method lookups
+            conn.exec_driver_sql(
+                """
+                CREATE INDEX IF NOT EXISTS ix_expenses_payment_method_id
+                ON expenses (payment_method_id)
+                """
+            )
+            
+            # 6) FK constraint for payment methods (will be added after migration)
+            conn.exec_driver_sql(
+                """
+                DO $$
+                BEGIN
+                  IF NOT EXISTS (
+                    SELECT 1
+                    FROM information_schema.table_constraints tc
+                    WHERE tc.table_name = 'expenses'
+                      AND tc.constraint_type = 'FOREIGN KEY'
+                      AND tc.constraint_name = 'fk_expenses_payment_method_id'
+                  ) THEN
+                    -- Check if user_payment_methods table exists first
+                    IF EXISTS (
+                      SELECT 1 
+                      FROM information_schema.tables 
+                      WHERE table_name = 'user_payment_methods'
+                    ) THEN
+                      ALTER TABLE expenses
+                      ADD CONSTRAINT fk_expenses_payment_method_id
+                      FOREIGN KEY (payment_method_id) REFERENCES user_payment_methods(id)
+                      ON DELETE SET NULL;
+                    END IF;
                   END IF;
                 END$$;
                 """

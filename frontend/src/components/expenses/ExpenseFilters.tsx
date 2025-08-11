@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { DateRangePicker } from '../ui/date-picker'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
+
 import { CategorySubcategorySelect } from '../ui/category-select'
 import { CurrencySelect } from '../ui/currency-select'
+import { PaymentMethodFilter } from '../ui/payment-method-filter'
 import { ExpenseFilters as ExpenseFiltersType } from '../../types/api.types'
 import { useExpenseStore } from '../../stores/expense.store'
-import { Search, Filter, X, TrendingUp, DollarSign, Banknote, CreditCard, Building, Smartphone, Tag } from 'lucide-react'
+import { Search, Filter, X, TrendingUp, DollarSign, Tag } from 'lucide-react'
 import { format } from 'date-fns'
 
 // Component for editing tag filters
@@ -361,40 +362,10 @@ export function ExpenseFilters({ onFiltersChange }: ExpenseFiltersProps) {
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
             <div className="flex gap-1">
-              <Select
-                value={localFilters.paymentMethod || undefined}
-                onValueChange={(value) => handleFilterChange('paymentMethod', value || undefined)}
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="All Methods" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    <span className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4" />
-                      <span>Cash</span>
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="card">
-                    <span className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span>Card</span>
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="bank_transfer">
-                    <span className="flex items-center gap-2">
-                      <Building className="h-4 w-4" />
-                      <span>Bank Transfer</span>
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="other">
-                    <span className="flex items-center gap-2">
-                      <Smartphone className="h-4 w-4" />
-                      <span>Other</span>
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <PaymentMethodFilter
+                value={localFilters.paymentMethod}
+                onChange={(value) => handleFilterChange('paymentMethod', value)}
+              />
               {localFilters.paymentMethod && (
                 <Button
                   variant="ghost"

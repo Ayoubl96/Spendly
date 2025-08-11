@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black rounded square background -->
+  <rect x="5" y="5" width="50" height="50" rx="8" ry="8" fill="#000000"/>
+  
+  <!-- Bar chart inside the square (now properly centered) -->
+  <!-- Bar 1: 10% height -->
+  <rect x="16" y="27.5" width="4" height="15" rx="2" ry="2" fill="#ffffff"/>
+  
+  <!-- Bar 2: 30% height -->
+  <rect x="22" y="17.5" width="4" height="25" rx="2" ry="2" fill="#ffffff"/>
+  
+  <!-- Bar 3: 20% height -->
+  <rect x="28" y="22.5" width="4" height="20" rx="2" ry="2" fill="#ffffff"/>
+  
+  <!-- Bar 4: 50% height (tallest) -->
+  <rect x="34" y="32.5" width="4" height="10" rx="2" ry="2" fill="#ffffff"/>
+  
+  <!-- Bar 5: 35% height -->
+  <rect x="40" y="15.5" width="4" height="27" rx="2" ry="2" fill="#ffffff"/>
+  
+  <!-- Spendly text -->
+  <text x="65" y="38" font-family="Arial, sans-serif" font-size="24" font-weight="600" fill="#000000">Spendly</text>
+</svg>

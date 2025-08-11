@@ -27,6 +27,8 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         category_id: Optional[Any] = None,
         subcategory_id: Optional[Any] = None,
         currency: Optional[str] = None,
+        payment_method: Optional[str] = None,
+        payment_method_id: Optional[Any] = None,
         search: Optional[str] = None,
         tags: Optional[List[str]] = None,
         sort_by: str = "expense_date",
@@ -65,6 +67,14 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         # Currency filtering
         if currency:
             query = query.filter(Expense.currency == currency)
+        
+        # Payment method filtering
+        if payment_method_id:
+            # Filter by new user payment method ID
+            query = query.filter(Expense.payment_method_id == payment_method_id)
+        elif payment_method:
+            # Filter by legacy payment method string
+            query = query.filter(Expense.payment_method == payment_method)
         
         # Search filtering
         if search:
@@ -108,6 +118,8 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         end_date: Optional[date] = None,
         category_id: Optional[Any] = None,
         currency: Optional[str] = None,
+        payment_method: Optional[str] = None,
+        payment_method_id: Optional[Any] = None,
         search: Optional[str] = None,
         tags: Optional[List[str]] = None
     ) -> int:
@@ -128,6 +140,13 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             )
         if currency:
             query = query.filter(Expense.currency == currency)
+        
+        # Payment method filtering
+        if payment_method_id:
+            query = query.filter(Expense.payment_method_id == payment_method_id)
+        elif payment_method:
+            query = query.filter(Expense.payment_method == payment_method)
+        
         if search:
             search_pattern = f"%{search}%"
             query = query.filter(
@@ -172,6 +191,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             category_id=obj_in.category_id,
             subcategory_id=obj_in.subcategory_id,
             payment_method=obj_in.payment_method,
+            payment_method_id=obj_in.payment_method_id,
             notes=obj_in.notes,
             location=obj_in.location,
             vendor=obj_in.vendor,

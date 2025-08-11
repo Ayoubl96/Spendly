@@ -155,7 +155,8 @@ export interface Expense {
   userId: string
   categoryId?: string
   subcategoryId?: string
-  paymentMethod?: 'cash' | 'card' | 'bank_transfer' | 'other'
+  paymentMethod?: 'cash' | 'card' | 'bank_transfer' | 'other'  // Legacy
+  paymentMethodId?: string  // New user payment method reference
   receiptUrl?: string
   notes?: string
   location?: string
@@ -192,7 +193,8 @@ export interface CreateExpenseRequest {
   expenseDate: string
   categoryId?: string
   subcategoryId?: string
-  paymentMethod?: 'cash' | 'card' | 'bank_transfer' | 'other'
+  paymentMethod?: 'cash' | 'card' | 'bank_transfer' | 'other'  // Legacy
+  paymentMethodId?: string  // New user payment method reference
   notes?: string
   location?: string
   vendor?: string
@@ -510,4 +512,51 @@ export interface CategorizationRuleStats {
   active_rules: number
   total_applications: number
   average_confidence: number
+}
+
+// Payment Method Types
+export interface PaymentMethod {
+  id: string
+  userId: string
+  name: string
+  description?: string
+  icon?: string
+  color?: string
+  sortOrder: number
+  isActive: boolean
+  isDefault: boolean
+  canDelete: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PaymentMethodWithStats extends PaymentMethod {
+  expenseCount: number
+  totalAmount: number
+  lastUsed?: string
+}
+
+export interface CreatePaymentMethodRequest {
+  name: string
+  description?: string
+  icon?: string
+  color?: string
+  sortOrder?: number
+  isActive?: boolean
+}
+
+export interface UpdatePaymentMethodRequest {
+  name?: string
+  description?: string
+  icon?: string
+  color?: string
+  sortOrder?: number
+  isActive?: boolean
+}
+
+export interface BulkPaymentMethodUpdateRequest {
+  paymentMethods: Array<{
+    id: string
+    sortOrder: number
+  }>
 }

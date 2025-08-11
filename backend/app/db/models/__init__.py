@@ -9,6 +9,7 @@ from .expense import Expense, ExpenseAttachment, SharedExpense
 from .budget import Budget
 from .budget_group import BudgetGroup
 from .categorization_rule import CategorizationRule
+from .payment_method import UserPaymentMethod
 
 __all__ = [
     "User", 
@@ -20,5 +21,6 @@ __all__ = [
     "SharedExpense",
     "Budget",
     "BudgetGroup",
-    "CategorizationRule"
+    "CategorizationRule",
+    "UserPaymentMethod"
 ]

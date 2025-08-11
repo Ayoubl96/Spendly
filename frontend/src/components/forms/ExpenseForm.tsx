@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Input } from '../ui/input'
 import { DatePicker } from '../ui/date-picker'
 import { CurrencyConversionEditor } from '../ui/currency-conversion-editor'
-import { CurrencyAmountDisplay } from '../ui/currency-amount-display'
+
 import { CategorySubcategorySelect } from '../ui/category-select'
+import { PaymentMethodSelect } from '../ui/payment-method-select'
 import { useAuthStore } from '../../stores/auth.store'
 import { useExpenseStore } from '../../stores/expense.store'
 
@@ -99,7 +100,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
     amount_in_base_currency: '',
     exchangeRate: '',
     expenseDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'cash',
+    paymentMethod: '', // Legacy field for backward compatibility
+    paymentMethodId: null as string | null, // New field for user payment methods
     notes: '',
     location: '',
     vendor: '',
@@ -169,15 +171,11 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
     const defaultCurrency = user?.defaultCurrency || 'EUR'
     
     if (editExpense) {
-      console.log('Editing expense with data:', editExpense)
-      console.log('Category tree available:', categoryTree.length > 0)
       
       // Only set form data if category tree is loaded (for edit mode) or if it's a new expense
       if (categoryTree.length > 0 || !editExpense.categoryId) {
         const categoryId = editExpense.categoryId || undefined
         const subcategoryId = editExpense.subcategoryId || undefined
-        
-        console.log('Setting form data with categories:', { categoryId, subcategoryId })
         
         setFormData({
           description: editExpense.description ?? '',
@@ -188,7 +186,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
           amount_in_base_currency: editExpense.amountInBaseCurrency?.toString() ?? '',
           exchangeRate: editExpense.exchangeRate?.toString() ?? '',
           expenseDate: editExpense.expenseDate ?? new Date().toISOString().split('T')[0],
-          paymentMethod: editExpense.paymentMethod ?? 'cash',
+          paymentMethod: editExpense.paymentMethod ?? '',
+          paymentMethodId: editExpense.paymentMethodId ?? null,
           notes: editExpense.notes ?? '',
           location: editExpense.location ?? '',
           vendor: editExpense.vendor ?? '',
@@ -219,7 +218,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
         amount_in_base_currency: '',
         exchangeRate: '',
         expenseDate: new Date().toISOString().split('T')[0],
-        paymentMethod: 'cash',
+        paymentMethod: '',
+        paymentMethodId: null,
         notes: '',
         location: '',
         vendor: '',
@@ -234,7 +234,6 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
   }, [editExpense?.id, isOpen, categoryTree.length]) // Depend on categoryTree.length to wait for it to load
 
   const handleConvertedAmountChange = (amount: number, rate: number) => {
-    console.log('Manual conversion edit:', { amount, rate, hasManualConversion: true })
     setConvertedAmount(amount)
     setExchangeRate(rate)
     setHasManualConversion(true)
@@ -258,7 +257,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
       subcategoryId: formData.subcategory,
       amount_in_base_currency: parseFloat(formData.amount_in_base_currency),
       exchange_rate: parseFloat(formData.exchangeRate),
-      paymentMethod: formData.paymentMethod as 'cash' | 'card' | 'bank_transfer' | 'other',
+      paymentMethod: (formData.paymentMethod as 'cash' | 'card' | 'bank_transfer' | 'other') || undefined,
+      paymentMethodId: formData.paymentMethodId || undefined,
       notes: formData.notes || undefined,
       location: formData.location || undefined,
       vendor: formData.vendor || undefined,
@@ -266,6 +266,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
       sharedWith: formData.isShared && formData.sharedWith.length > 0 ? formData.sharedWith : undefined,
       tags: formData.tags && formData.tags.length > 0 ? formData.tags : undefined
     }
+
+
 
     // Add conversion data if currencies differ
     if (!isSameCurrency(formData.currency, user?.defaultCurrency || 'EUR')) {
@@ -280,11 +282,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
       submissionData.amount_in_base_currency = finalConvertedAmount
       submissionData.exchange_rate = finalExchangeRate
       
-      console.log('Sending conversion data:', { 
-        amount_in_base_currency: finalConvertedAmount, 
-        exchange_rate: finalExchangeRate,
-        source: hasManualConversion ? 'manual' : 'api'
-      })
+
     }
 
     onSubmit(submissionData)
@@ -452,14 +450,12 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
               selectedCategoryId={formData.category}
               selectedSubcategoryId={formData.subcategory}
               onCategoryChange={(categoryId) => {
-                console.log('Category changed to:', categoryId)
                 setFormData(prev => ({ 
                   ...prev, 
                   category: categoryId
                 }))
               }}
               onSubcategoryChange={(subcategoryId) => {
-                console.log('Subcategory changed to:', subcategoryId)
                 setFormData(prev => ({ ...prev, subcategory: subcategoryId }))
               }}
               categoryLabel="Category"
@@ -480,18 +476,31 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
                 <label htmlFor="paymentMethod" className="block text-sm font-medium mb-1">
                   Payment Method
                 </label>
-                <select
-                  id="paymentMethod"
-                  name="paymentMethod"
-                  value={formData.paymentMethod}
-                  onChange={handleChange}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="other">Other</option>
-                </select>
+                <PaymentMethodSelect
+                  value={formData.paymentMethodId || formData.paymentMethod || null}
+                  onChange={(selectedValue) => {
+                    if (!selectedValue) {
+                      // Clear both fields if no selection
+                      setFormData(prev => ({
+                        ...prev,
+                        paymentMethodId: null,
+                        paymentMethod: ''
+                      }))
+                      return
+                    }
+
+                    // Check if it's a legacy method (cash, card, bank_transfer, other)
+                    const isLegacy = ['cash', 'card', 'bank_transfer', 'other'].includes(selectedValue)
+                    
+                    setFormData(prev => ({
+                      ...prev,
+                      paymentMethodId: isLegacy ? null : selectedValue,
+                      paymentMethod: isLegacy ? selectedValue : ''
+                    }))
+                  }}
+                  placeholder="Select payment method (optional)..."
+                  required={false}
+                />
               </div>
 
               <div>

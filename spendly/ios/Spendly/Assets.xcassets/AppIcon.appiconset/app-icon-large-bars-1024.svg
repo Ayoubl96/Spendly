@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black background filling the entire square with iOS corner radius -->
+  <rect x="0" y="0" width="1024" height="1024" rx="184" ry="184" fill="#000000"/>
+  
+  <!-- Much larger bar chart taking up more space (scaled up significantly) -->
+  <!-- Bar 1: 25% height -->
+  <rect x="205" y="612" width="95" height="300" rx="47" ry="47" fill="#ffffff"/>
+  
+  <!-- Bar 2: 55% height -->
+  <rect x="330" y="356" width="95" height="556" rx="47" ry="47" fill="#ffffff"/>
+  
+  <!-- Bar 3: 35% height -->
+  <rect x="455" y="492" width="95" height="420" rx="47" ry="47" fill="#ffffff"/>
+  
+  <!-- Bar 4: 20% height (shortest) -->
+  <rect x="580" y="672" width="95" height="240" rx="47" ry="47" fill="#ffffff"/>
+  
+  <!-- Bar 5: 70% height (tallest) -->
+  <rect x="705" y="246" width="95" height="666" rx="47" ry="47" fill="#ffffff"/>
+</svg>

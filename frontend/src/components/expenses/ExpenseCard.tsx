@@ -2,6 +2,7 @@ import React from 'react'
 import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { CurrencyAmountDisplay } from '../ui/currency-amount-display'
+import { PaymentMethodDisplay } from './PaymentMethodDisplay'
 import { Expense, Category } from '../../types/api.types'
 import { useAuthStore } from '../../stores/auth.store'
 import { formatDate } from '../../lib/utils'
@@ -15,10 +16,7 @@ import {
   Store, 
   StickyNote, 
   Tag,
-  CreditCard,
-  Banknote,
-  Building,
-  HelpCircle,
+
   Calendar,
   FolderOpen
 } from 'lucide-react'
@@ -34,19 +32,7 @@ interface ExpenseCardProps {
 export function ExpenseCard({ expense, category, subcategory, onEdit, onDelete }: ExpenseCardProps) {
   const { user } = useAuthStore()
 
-  const getPaymentMethodIcon = (method?: string) => {
-    switch (method) {
-      case 'cash': return <Banknote className="h-4 w-4" />
-      case 'card': return <CreditCard className="h-4 w-4" />
-      case 'bank_transfer': return <Building className="h-4 w-4" />
-      default: return <HelpCircle className="h-4 w-4" />
-    }
-  }
 
-  const formatPaymentMethod = (method?: string) => {
-    if (!method) return 'Not specified'
-    return method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
-  }
 
   const formatTags = (tags?: string[]) => {
     if (!tags || tags.length === 0) return null
@@ -79,10 +65,10 @@ export function ExpenseCard({ expense, category, subcategory, onEdit, onDelete }
                       <Calendar className="h-3 w-3 text-gray-400" />
                       <span>{formatDate(expense.expenseDate)}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {getPaymentMethodIcon(expense.paymentMethod)}
-                      <span>{formatPaymentMethod(expense.paymentMethod)}</span>
-                    </div>
+                    <PaymentMethodDisplay
+                      paymentMethodId={expense.paymentMethodId}
+                      legacyPaymentMethod={expense.paymentMethod}
+                    />
                   </div>
                 </div>
               </div>

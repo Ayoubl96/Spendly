@@ -45,6 +45,7 @@ class User(Base):
     categories = relationship("Category", back_populates="user", lazy="dynamic")
     budgets = relationship("Budget", back_populates="user", lazy="dynamic")
     budget_groups = relationship("BudgetGroup", back_populates="user", lazy="dynamic")
+    payment_methods = relationship("UserPaymentMethod", back_populates="user", lazy="dynamic")
     
     @property
     def full_name(self) -> str:

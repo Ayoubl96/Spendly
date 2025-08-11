@@ -9,6 +9,7 @@ from .crud_currency import currency_crud
 from .crud_expense import expense_crud
 from .crud_budget import budget_crud
 from .crud_budget_group import budget_group_crud
+from .crud_payment_method import payment_method
 
 __all__ = [
     "CRUDBase",
@@ -17,5 +18,6 @@ __all__ = [
     "currency_crud",
     "expense_crud",
     "budget_crud",
-    "budget_group_crud"
+    "budget_group_crud",
+    "payment_method"
 ]

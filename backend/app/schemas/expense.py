@@ -26,7 +26,8 @@ class ExpenseBase(BaseModel):
     expense_date: date
     category_id: Optional[str] = None
     subcategory_id: Optional[str] = None
-    payment_method: Optional[PaymentMethod] = None
+    payment_method: Optional[PaymentMethod] = None  # Legacy support
+    payment_method_id: Optional[str] = None  # New user payment method reference
     notes: Optional[str] = None
     location: Optional[str] = None
     vendor: Optional[str] = None
@@ -90,6 +91,29 @@ class ExpenseCreate(ExpenseBase):
             return v
         except (ValueError, TypeError):
             raise ValueError("Subcategory ID must be a valid UUID or null")
+    
+    @validator("payment_method_id")
+    def validate_payment_method_id(cls, v):
+        if v is None or v == "":
+            return None
+        # Try to parse as UUID to validate format
+        try:
+            uuid.UUID(v)
+            return v
+        except (ValueError, TypeError):
+            raise ValueError("Payment method ID must be a valid UUID or null")
+    
+    @validator("payment_method_id", pre=False, always=True)
+    def validate_payment_method_consistency(cls, v, values):
+        """Ensure only one payment method field is used"""
+        payment_method = values.get("payment_method")
+        
+        # If both are provided, prefer payment_method_id
+        if v is not None and payment_method is not None:
+            # Clear legacy field when new field is provided
+            values["payment_method"] = None
+            
+        return v
 
 
 class ExpenseUpdate(ExpenseBase):
@@ -112,7 +136,7 @@ class ExpenseInDBBase(ExpenseBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
-    @validator("id", "user_id", "category_id", "subcategory_id", pre=True)
+    @validator("id", "user_id", "category_id", "subcategory_id", "payment_method_id", pre=True)
     def convert_uuid_to_string(cls, v):
         """Convert UUID objects to strings"""
         if v is None:
@@ -136,6 +160,7 @@ class ExpenseWithDetails(Expense):
     category: Optional[dict] = None
     subcategory: Optional[dict] = None
     currency_info: Optional[dict] = None
+    payment_method_info: Optional[dict] = None
     attachments: List[dict] = []
 
 

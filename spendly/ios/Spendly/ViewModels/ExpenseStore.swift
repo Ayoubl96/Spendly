@@ -159,7 +159,7 @@ class ExpenseStore: ObservableObject {
         
         // Apply payment method filter
         if let paymentMethod = filters.paymentMethod {
-            filteredExpenses = filteredExpenses.filter { $0.paymentMethod == paymentMethod }
+            filteredExpenses = filteredExpenses.filter { $0.paymentMethodId == paymentMethod.id }
         }
         
         // Apply amount filters

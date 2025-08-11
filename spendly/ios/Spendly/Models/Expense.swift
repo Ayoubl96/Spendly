@@ -1,4 +1,125 @@
 import Foundation
+import SwiftUI
+
+// MARK: - Legacy Payment Method Support (duplicated for compilation)
+enum LegacyPaymentMethod: String, Codable, CaseIterable {
+    case cash = "cash"
+    case card = "card"
+    case bankTransfer = "bank_transfer"
+    case other = "other"
+    
+    var displayName: String {
+        switch self {
+        case .cash: return "Cash"
+        case .card: return "Card"
+        case .bankTransfer: return "Bank Transfer"
+        case .other: return "Other"
+        }
+    }
+}
+
+// MARK: - User Payment Method Models
+struct UserPaymentMethod: Codable, Identifiable {
+    let id: String
+    let userId: String
+    let name: String
+    let description: String?
+    let icon: String?
+    let color: String?
+    let sortOrder: Int
+    let isActive: Bool
+    let isDefault: Bool
+    let canDelete: Bool
+    let createdAt: String
+    let updatedAt: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case name
+        case description
+        case icon
+        case color
+        case sortOrder = "sort_order"
+        case isActive = "is_active"
+        case isDefault = "is_default"
+        case canDelete = "can_delete"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+struct CreatePaymentMethodRequest: Codable {
+    let name: String
+    let description: String?
+    let icon: String?
+    let color: String?
+    let sortOrder: Int?
+    let isActive: Bool?
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case icon
+        case color
+        case sortOrder = "sort_order"
+        case isActive = "is_active"
+    }
+}
+
+struct UpdatePaymentMethodRequest: Codable {
+    let name: String?
+    let description: String?
+    let icon: String?
+    let color: String?
+    let sortOrder: Int?
+    let isActive: Bool?
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case icon
+        case color
+        case sortOrder = "sort_order"
+        case isActive = "is_active"
+    }
+}
+
+struct PaymentMethodWithStats: Codable, Identifiable {
+    let id: String
+    let userId: String
+    let name: String
+    let description: String?
+    let icon: String?
+    let color: String?
+    let sortOrder: Int
+    let isActive: Bool
+    let isDefault: Bool
+    let canDelete: Bool
+    let createdAt: String
+    let updatedAt: String
+    let expenseCount: Int
+    let totalAmount: Double
+    let lastUsed: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case name
+        case description
+        case icon
+        case color
+        case sortOrder = "sort_order"
+        case isActive = "is_active"
+        case isDefault = "is_default"
+        case canDelete = "can_delete"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case expenseCount = "expense_count"
+        case totalAmount = "total_amount"
+        case lastUsed = "last_used"
+    }
+}
 
 struct Expense: Codable, Identifiable {
     let id: String
@@ -11,7 +132,8 @@ struct Expense: Codable, Identifiable {
     let userId: String
     let categoryId: String?
     let subcategoryId: String?
-    let paymentMethod: PaymentMethod?
+    let paymentMethod: LegacyPaymentMethod?  // Legacy field
+    let paymentMethodId: String?            // New user payment method reference
     let receiptUrl: String?
     let notes: String?
     let location: String?
@@ -34,6 +156,7 @@ struct Expense: Codable, Identifiable {
         case categoryId = "category_id"
         case subcategoryId = "subcategory_id"
         case paymentMethod = "payment_method"
+        case paymentMethodId = "payment_method_id"
         case receiptUrl = "receipt_url"
         case notes
         case location
@@ -58,7 +181,8 @@ struct Expense: Codable, Identifiable {
         userId = try container.decode(String.self, forKey: .userId)
         categoryId = try container.decodeIfPresent(String.self, forKey: .categoryId)
         subcategoryId = try container.decodeIfPresent(String.self, forKey: .subcategoryId)
-        paymentMethod = try container.decodeIfPresent(PaymentMethod.self, forKey: .paymentMethod)
+        paymentMethod = try container.decodeIfPresent(LegacyPaymentMethod.self, forKey: .paymentMethod)
+        paymentMethodId = try container.decodeIfPresent(String.self, forKey: .paymentMethodId)
         receiptUrl = try container.decodeIfPresent(String.self, forKey: .receiptUrl)
         notes = try container.decodeIfPresent(String.self, forKey: .notes)
         location = try container.decodeIfPresent(String.self, forKey: .location)
@@ -95,30 +219,7 @@ struct Expense: Codable, Identifiable {
     }
 }
 
-enum PaymentMethod: String, Codable, CaseIterable {
-    case cash = "cash"
-    case card = "card"
-    case bankTransfer = "bank_transfer"
-    case other = "other"
-    
-    var displayName: String {
-        switch self {
-        case .cash: return "Cash"
-        case .card: return "Card"
-        case .bankTransfer: return "Bank Transfer"
-        case .other: return "Other"
-        }
-    }
-    
-    var icon: String {
-        switch self {
-        case .cash: return "banknote"
-        case .card: return "creditcard"
-        case .bankTransfer: return "building.columns"
-        case .other: return "ellipsis.circle"
-        }
-    }
-}
+// Legacy PaymentMethod enum moved to PaymentMethod.swift as LegacyPaymentMethod
 
 struct CreateExpenseRequest: Encodable {
     let amount: Double
@@ -127,7 +228,8 @@ struct CreateExpenseRequest: Encodable {
     let expenseDate: Date
     let categoryId: String?
     let subcategoryId: String?
-    let paymentMethod: PaymentMethod?
+    let paymentMethod: LegacyPaymentMethod?  // Legacy field
+    let paymentMethodId: String?            // New user payment method reference
     let notes: String?
     let location: String?
     let vendor: String?
@@ -145,6 +247,7 @@ struct CreateExpenseRequest: Encodable {
         case categoryId = "category_id"
         case subcategoryId = "subcategory_id"
         case paymentMethod = "payment_method"
+        case paymentMethodId = "payment_method_id"
         case notes
         case location
         case vendor
@@ -162,7 +265,7 @@ struct ExpenseFilters {
     var categoryId: String?
     var subcategoryId: String?
     var currency: String?
-    var paymentMethod: PaymentMethod?
+    var paymentMethod: UserPaymentMethod?
     var minAmount: Double?
     var maxAmount: Double?
     var search: String?

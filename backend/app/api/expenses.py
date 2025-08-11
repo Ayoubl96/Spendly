@@ -27,6 +27,8 @@ def read_expenses(
     category_id: Optional[str] = Query(None),
     subcategory_id: Optional[str] = Query(None),
     currency: Optional[str] = Query(None),
+    payment_method: Optional[str] = Query(None, description="Legacy payment method filter"),
+    payment_method_id: Optional[str] = Query(None, description="User payment method ID filter"),
     tags: Optional[List[str]] = Query(None)
 ) -> Any:
     """
@@ -42,6 +44,8 @@ def read_expenses(
         category_id=category_id,
         subcategory_id=subcategory_id,
         currency=currency,
+        payment_method=payment_method,
+        payment_method_id=payment_method_id,
         search=commons.search,
         tags=tags,
         sort_by=commons.sort_by or "expense_date",

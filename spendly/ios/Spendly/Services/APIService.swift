@@ -371,4 +371,51 @@ class APIService: ObservableObject {
         let (data, response) = try await URLSession.shared.data(for: request)
         return try handleResponse(data, response, nil, type: BudgetGroupSummary.self)
     }
+    
+    // MARK: - Payment Methods
+    func getPaymentMethods(includeInactive: Bool = false) async throws -> [UserPaymentMethod] {
+        let queryParam = includeInactive ? "?include_inactive=true" : ""
+        let request = try createRequest(endpoint: "/payment-methods\(queryParam)")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return try handleResponse(data, response, nil, type: [UserPaymentMethod].self)
+    }
+    
+    func getPaymentMethodsWithStats(includeInactive: Bool = false) async throws -> [PaymentMethodWithStats] {
+        let queryParam = includeInactive ? "?include_inactive=true" : ""
+        let request = try createRequest(endpoint: "/payment-methods/with-stats\(queryParam)")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return try handleResponse(data, response, nil, type: [PaymentMethodWithStats].self)
+    }
+    
+    func createPaymentMethod(_ paymentMethod: CreatePaymentMethodRequest) async throws -> UserPaymentMethod {
+        let body = try encoder.encode(paymentMethod)
+        let request = try createRequest(endpoint: "/payment-methods", method: "POST", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return try handleResponse(data, response, nil, type: UserPaymentMethod.self)
+    }
+    
+    func updatePaymentMethod(id: String, _ paymentMethod: UpdatePaymentMethodRequest) async throws -> UserPaymentMethod {
+        let body = try encoder.encode(paymentMethod)
+        let request = try createRequest(endpoint: "/payment-methods/\(id)", method: "PUT", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return try handleResponse(data, response, nil, type: UserPaymentMethod.self)
+    }
+    
+    func deletePaymentMethod(id: String, force: Bool = false) async throws {
+        let queryParam = force ? "?force=true" : ""
+        let request = try createRequest(endpoint: "/payment-methods/\(id)\(queryParam)", method: "DELETE")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        struct DeleteResponse: Decodable {
+            let message: String
+        }
+        
+        _ = try handleResponse(data, response, nil, type: DeleteResponse.self)
+    }
+    
+    func createDefaultPaymentMethods() async throws -> [UserPaymentMethod] {
+        let request = try createRequest(endpoint: "/payment-methods/create-defaults", method: "POST")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        return try handleResponse(data, response, nil, type: [UserPaymentMethod].self)
+    }
 }

@@ -46,6 +46,25 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>app-icon-60@2x</string>
+				<string>app-icon-60@3x</string>
+				<string>app-icon-40@2x</string>
+				<string>app-icon-40@3x</string>
+				<string>app-icon-29@2x</string>
+				<string>app-icon-29@3x</string>
+				<string>app-icon-20@2x</string>
+				<string>app-icon-20@3x</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
+		</dict>
+	</dict>
 	<key>LSApplicationCategoryType</key>
 	<string></string>
 	<key>NSAppTransportSecurity</key>

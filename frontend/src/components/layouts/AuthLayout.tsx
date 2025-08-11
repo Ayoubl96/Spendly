@@ -17,7 +17,13 @@ export function AuthLayout() {
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/80 p-8 items-center justify-center">
         <div className="text-center text-white max-w-md">
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-4">Spendly</h1>
+            <div className="flex justify-center mb-6">
+              <img 
+                src="/logo.svg" 
+                alt="Spendly" 
+                className="h-16"
+              />
+            </div>
             <div className="w-16 h-1 bg-white/30 mx-auto rounded"></div>
           </div>
           

@@ -68,7 +68,7 @@ struct AddExpenseView: View {
     @State private var amount = ""
     @State private var description = ""
     @State private var selectedCategory: String = ""
-    @State private var selectedPaymentMethod: PaymentMethod = .card
+    @State private var selectedPaymentMethod: LegacyPaymentMethod = .card
     @State private var expenseDate = Date()
     @State private var notes = ""
     @State private var vendor = ""
@@ -76,33 +76,8 @@ struct AddExpenseView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section("Basic Information") {
-                    TextField("Amount", text: $amount)
-                        .keyboardType(.decimalPad)
-                    
-                    TextField("Description", text: $description)
-                    
-                    DatePicker("Date", selection: $expenseDate, displayedComponents: .date)
-                }
-                
-                Section("Details") {
-                    Picker("Category", selection: $selectedCategory) {
-                        Text("None").tag("")
-                        ForEach(categoryStore.categories) { category in
-                            Text(category.name).tag(category.id)
-                        }
-                    }
-                    
-                    Picker("Payment Method", selection: $selectedPaymentMethod) {
-                        ForEach(PaymentMethod.allCases, id: \.self) { method in
-                            Label(method.displayName, systemImage: method.icon)
-                                .tag(method)
-                        }
-                    }
-                    
-                    TextField("Vendor", text: $vendor)
-                    TextField("Notes", text: $notes)
-                }
+                basicInformationSection
+                detailsSection
             }
             .navigationTitle("Add Expense")
             .navigationBarItems(
@@ -110,6 +85,43 @@ struct AddExpenseView: View {
                 trailing: Button("Save") { saveExpense() }
                     .disabled(!isFormValid)
             )
+        }
+    }
+    
+    private var basicInformationSection: some View {
+        Section("Basic Information") {
+            TextField("Amount", text: $amount)
+                .keyboardType(.decimalPad)
+            
+            TextField("Description", text: $description)
+            
+            DatePicker("Date", selection: $expenseDate, displayedComponents: .date)
+        }
+    }
+    
+    private var detailsSection: some View {
+        Section(header: Text("Details")) {
+            categoryPicker
+            paymentMethodPicker
+            TextField("Vendor", text: $vendor)
+            TextField("Notes", text: $notes)
+        }
+    }
+    
+    private var categoryPicker: some View {
+        Picker("Category", selection: $selectedCategory) {
+            Text("None").tag("")
+            ForEach(categoryStore.categories) { category in
+                Text(category.name).tag(category.id)
+            }
+        }
+    }
+    
+    private var paymentMethodPicker: some View {
+        Picker("Payment Method", selection: $selectedPaymentMethod) {
+            ForEach(LegacyPaymentMethod.allCases, id: \.self) { method in
+                Text(method.displayName).tag(method)
+            }
         }
     }
     
@@ -128,6 +140,7 @@ struct AddExpenseView: View {
             categoryId: selectedCategory.isEmpty ? nil : selectedCategory,
             subcategoryId: nil,
             paymentMethod: selectedPaymentMethod,
+            paymentMethodId: nil,
             notes: notes.isEmpty ? nil : notes,
             location: nil,
             vendor: vendor.isEmpty ? nil : vendor,

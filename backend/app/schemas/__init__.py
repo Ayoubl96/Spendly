@@ -8,6 +8,7 @@ from .currency import Currency, CurrencyCreate, CurrencyUpdate
 from .expense import Expense, ExpenseCreate, ExpenseUpdate
 from .budget import Budget, BudgetCreate, BudgetUpdate
 from .budget_group import BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
+from .payment_method import PaymentMethod, PaymentMethodCreate, PaymentMethodUpdate
 from .token import Token, TokenData
 
 __all__ = [
@@ -17,5 +18,6 @@ __all__ = [
     "Expense", "ExpenseCreate", "ExpenseUpdate",
     "Budget", "BudgetCreate", "BudgetUpdate",
     "BudgetGroup", "BudgetGroupCreate", "BudgetGroupUpdate",
+    "PaymentMethod", "PaymentMethodCreate", "PaymentMethodUpdate",
     "Token", "TokenData"
 ]

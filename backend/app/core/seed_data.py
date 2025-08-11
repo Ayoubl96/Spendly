@@ -7,6 +7,7 @@ from app.db.models.currency import Currency
 from app.db.models.category import Category
 from app.crud.crud_currency import currency_crud
 from app.crud.crud_category import category_crud
+from app.crud.crud_payment_method import payment_method
 from app.schemas.currency import CurrencyCreate
 from app.schemas.category import CategoryCreate
 
@@ -113,3 +114,23 @@ def seed_default_categories(db: Session, user_id: str):
             print(f"✅ Seeded category: {category_data['name']} for user {user_id}")
         else:
             print(f"ℹ️  Category already exists: {category_data['name']} for user {user_id}")
+
+
+def seed_default_payment_methods(db: Session, user_id: str):
+    """Seed default payment methods for a new user"""
+    # Check if user already has payment methods
+    existing_methods = payment_method.get_by_user(db, user_id=user_id)
+    
+    if not existing_methods:
+        created_methods = payment_method.create_default_payment_methods(
+            db, user_id=user_id
+        )
+        print(f"✅ Seeded {len(created_methods)} default payment methods for user {user_id}")
+    else:
+        print(f"ℹ️  User {user_id} already has {len(existing_methods)} payment methods")
+
+
+def seed_user_defaults(db: Session, user_id: str):
+    """Seed all default data for a new user (categories and payment methods)"""
+    seed_default_categories(db, user_id)
+    seed_default_payment_methods(db, user_id)

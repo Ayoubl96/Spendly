@@ -11,7 +11,8 @@ import {
   X,
   LogOut,
   User,
-  Tags
+  Tags,
+  CreditCard
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Expenses', href: '/expenses', icon: Receipt },
   { name: 'Categories', href: '/categories', icon: Tags },
+  { name: 'Payment Methods', href: '/settings/payment-methods', icon: CreditCard },
   { name: 'Budget', href: '/budget', icon: PiggyBank },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
@@ -55,9 +57,11 @@ export function DashboardLayout() {
           {/* Header */}
           <div className="flex items-center justify-between h-16 px-6 border-b">
             <Link to="/dashboard" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">S</span>
-              </div>
+              <img 
+                src="/icon-only.svg" 
+                alt="Spendly" 
+                className="w-8 h-8"
+              />
               <span className="text-xl font-bold">Spendly</span>
             </Link>
             
