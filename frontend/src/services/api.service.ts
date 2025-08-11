@@ -69,6 +69,7 @@ class ApiService {
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
       ...(options.headers as Record<string, string> || {}),
     }
 
@@ -79,6 +80,7 @@ class ApiService {
     const response = await fetch(url, {
       ...options,
       headers,
+      credentials: 'include',
     })
 
     if (!response.ok) {
