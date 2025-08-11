@@ -686,7 +686,7 @@ class ApiService {
   }
 
   async createPaymentMethod(data: CreatePaymentMethodRequest): Promise<PaymentMethod> {
-    const rawPaymentMethod = await this.request<any>('/payment-methods', {
+    const rawPaymentMethod = await this.request<any>('/payment-methods/', {
       method: 'POST',
       body: JSON.stringify(data)
     })
@@ -709,7 +709,7 @@ class ApiService {
   }
 
   async reorderPaymentMethods(data: BulkPaymentMethodUpdateRequest): Promise<PaymentMethod[]> {
-    const rawPaymentMethods = await this.request<any[]>('/payment-methods/reorder', {
+    const rawPaymentMethods = await this.request<any[]>('/payment-methods/reorder/', {
       method: 'POST',
       body: JSON.stringify({
         payment_methods: data.paymentMethods.map(pm => ({
@@ -722,7 +722,7 @@ class ApiService {
   }
 
   async createDefaultPaymentMethods(): Promise<PaymentMethod[]> {
-    const rawPaymentMethods = await this.request<any[]>('/payment-methods/create-defaults', {
+    const rawPaymentMethods = await this.request<any[]>('/payment-methods/create-defaults/', {
       method: 'POST'
     })
     return rawPaymentMethods.map(pm => this.mapPaymentMethodFields(pm))
