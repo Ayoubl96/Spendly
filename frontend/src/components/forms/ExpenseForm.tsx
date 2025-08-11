@@ -15,6 +15,71 @@ import { X } from 'lucide-react'
 import { format } from 'date-fns'
 import { isSameCurrency, safeNumberConversion } from '../../utils/currency'
 
+// Component for editing tags in the expense form
+interface TagEditorProps {
+  tags: string[];
+  onTagsChange: (tags: string[]) => void;
+}
+
+const TagEditor: React.FC<TagEditorProps> = ({ tags, onTagsChange }) => {
+  const [newTag, setNewTag] = useState('');
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      onTagsChange([...tags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    onTagsChange(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center space-x-2">
+        <Input
+          placeholder="Add a tag..."
+          value={newTag}
+          onChange={(e) => setNewTag(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+          className="flex-1"
+        />
+        <Button
+          type="button"
+          onClick={handleAddTag}
+          disabled={!newTag.trim() || tags.includes(newTag.trim())}
+          size="sm"
+          variant="outline"
+        >
+          Add
+        </Button>
+      </div>
+      
+      {/* Display current tags */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => handleRemoveTag(tag)}
+                className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-200 hover:bg-blue-300 text-blue-600"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface ExpenseFormProps {
   isOpen: boolean
   onClose: () => void
@@ -39,7 +104,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
     location: '',
     vendor: '',
     isShared: false,
-    tags: '',
+    tags: [] as string[],
     sharedWith: [] as string[]
   })
   
@@ -128,7 +193,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
           location: editExpense.location ?? '',
           vendor: editExpense.vendor ?? '',
           isShared: editExpense.isShared ?? false,
-          tags: editExpense.tags?.join(', ') ?? '',
+          tags: editExpense.tags ?? [],
           sharedWith: editExpense.sharedWith ?? []
         })
 
@@ -159,7 +224,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
         location: '',
         vendor: '',
         isShared: false,
-        tags: '',
+        tags: [],
         sharedWith: []
       })
       setConvertedAmount(0)
@@ -199,7 +264,7 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
       vendor: formData.vendor || undefined,
       isShared: formData.isShared,
       sharedWith: formData.isShared && formData.sharedWith.length > 0 ? formData.sharedWith : undefined,
-      tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : undefined
+      tags: formData.tags && formData.tags.length > 0 ? formData.tags : undefined
     }
 
     // Add conversion data if currencies differ
@@ -258,6 +323,13 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
         return newData
       })
     }
+  }
+
+  const handleTagsChange = (tags: string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      tags
+    }))
   }
 
   const handleUserToggle = (userId: string) => {
@@ -451,16 +523,12 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
               </div>
 
               <div>
-                <label htmlFor="tags" className="block text-sm font-medium mb-1">
+                <label className="block text-sm font-medium mb-1">
                   Tags
                 </label>
-                <Input
-                  id="tags"
-                  name="tags"
-                  type="text"
-                  placeholder="e.g., business, personal (comma separated)"
-                  value={formData.tags}
-                  onChange={handleChange}
+                <TagEditor 
+                  tags={formData.tags}
+                  onTagsChange={handleTagsChange}
                 />
               </div>
             </div>

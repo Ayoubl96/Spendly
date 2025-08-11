@@ -26,7 +26,8 @@ def read_expenses(
     end_date: Optional[date] = Query(None),
     category_id: Optional[str] = Query(None),
     subcategory_id: Optional[str] = Query(None),
-    currency: Optional[str] = Query(None)
+    currency: Optional[str] = Query(None),
+    tags: Optional[List[str]] = Query(None)
 ) -> Any:
     """
     Retrieve user's expenses with filtering
@@ -42,6 +43,7 @@ def read_expenses(
         subcategory_id=subcategory_id,
         currency=currency,
         search=commons.search,
+        tags=tags,
         sort_by=commons.sort_by or "expense_date",
         sort_order=commons.sort_order
     )

@@ -191,6 +191,9 @@ class ApiService {
     if (filters.subcategoryId) params.append('subcategory_id', filters.subcategoryId)
     if (filters.currency) params.append('currency', filters.currency)
     if (filters.search) params.append('search', filters.search)
+    if (filters.tags && filters.tags.length > 0) {
+      filters.tags.forEach(tag => params.append('tags', tag))
+    }
     if (pagination.page) params.append('page', pagination.page.toString())
     if (pagination.limit) params.append('limit', pagination.limit.toString())
     if (pagination.sortBy) params.append('sort_by', pagination.sortBy)

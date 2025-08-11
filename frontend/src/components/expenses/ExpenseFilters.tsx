@@ -7,8 +7,75 @@ import { CategorySubcategorySelect } from '../ui/category-select'
 import { CurrencySelect } from '../ui/currency-select'
 import { ExpenseFilters as ExpenseFiltersType } from '../../types/api.types'
 import { useExpenseStore } from '../../stores/expense.store'
-import { Search, Filter, X, TrendingUp, DollarSign, Banknote, CreditCard, Building, Smartphone } from 'lucide-react'
+import { Search, Filter, X, TrendingUp, DollarSign, Banknote, CreditCard, Building, Smartphone, Tag } from 'lucide-react'
 import { format } from 'date-fns'
+
+// Component for editing tag filters
+interface TagFilterEditorProps {
+  tags: string[];
+  onTagsChange: (tags: string[]) => void;
+}
+
+const TagFilterEditor: React.FC<TagFilterEditorProps> = ({ tags, onTagsChange }) => {
+  const [newTag, setNewTag] = useState('');
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      onTagsChange([...tags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    onTagsChange(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1">
+          <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Add tag to filter..."
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+            className="pl-10 h-9 text-sm"
+          />
+        </div>
+        <Button
+          onClick={handleAddTag}
+          disabled={!newTag.trim() || tags.includes(newTag.trim())}
+          size="sm"
+          className="h-9"
+        >
+          Add
+        </Button>
+      </div>
+      
+      {/* Display current filter tags */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+            >
+              <Tag className="w-3 h-3 mr-1" />
+              {tag}
+              <button
+                onClick={() => handleRemoveTag(tag)}
+                className="ml-2 inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-200 hover:bg-blue-300 text-blue-600"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface ExpenseFiltersProps {
   onFiltersChange?: (filters: ExpenseFiltersType) => void
@@ -277,6 +344,15 @@ export function ExpenseFilters({ onFiltersChange }: ExpenseFiltersProps) {
               </Button>
             ))}
           </div>
+        </div>
+
+        {/* Tags Filter */}
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-gray-700">Filter by Tags</label>
+          <TagFilterEditor 
+            tags={localFilters.tags || []}
+            onTagsChange={(tags) => handleFilterChange('tags', tags)}
+          />
         </div>
 
         {/* Secondary Controls Row */}

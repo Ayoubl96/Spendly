@@ -5,7 +5,7 @@ CRUD operations for Expense model
 from typing import List, Optional, Any, Dict
 from datetime import date, datetime
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func, desc, asc
+from sqlalchemy import and_, or_, func, desc, asc, Text
 
 from app.crud.base import CRUDBase
 from app.db.models.expense import Expense, ExpenseAttachment, SharedExpense
@@ -28,6 +28,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         subcategory_id: Optional[Any] = None,
         currency: Optional[str] = None,
         search: Optional[str] = None,
+        tags: Optional[List[str]] = None,
         sort_by: str = "expense_date",
         sort_order: str = "desc"
     ) -> List[Expense]:
@@ -77,6 +78,18 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                 )
             )
         
+        # Tag filtering
+        if tags:
+            # Filter expenses that contain all specified tags
+            # Using PostgreSQL JSON text search for better compatibility
+            for tag in tags:
+                query = query.filter(
+                    and_(
+                        Expense.tags.isnot(None),
+                        func.cast(Expense.tags, Text).like(f'%"{tag}"%')
+                    )
+                )
+        
         # Sorting
         sort_column = getattr(Expense, sort_by, Expense.expense_date)
         if sort_order.lower() == "asc":
@@ -95,7 +108,8 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         end_date: Optional[date] = None,
         category_id: Optional[Any] = None,
         currency: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        tags: Optional[List[str]] = None
     ) -> int:
         """Count expenses for a user with filtering"""
         query = db.query(Expense).filter(Expense.user_id == user_id)
@@ -124,6 +138,18 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                     Expense.notes.ilike(search_pattern)
                 )
             )
+        
+        # Tag filtering
+        if tags:
+            # Filter expenses that contain all specified tags
+            # Using PostgreSQL JSON text search for better compatibility
+            for tag in tags:
+                query = query.filter(
+                    and_(
+                        Expense.tags.isnot(None),
+                        func.cast(Expense.tags, Text).like(f'%"{tag}"%')
+                    )
+                )
         
         return query.count()
     
