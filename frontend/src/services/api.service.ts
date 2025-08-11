@@ -673,18 +673,18 @@ class ApiService {
 
   async getPaymentMethods(includeInactive?: boolean): Promise<PaymentMethod[]> {
     const params = includeInactive ? '?include_inactive=true' : ''
-    const rawPaymentMethods = await this.request<any[]>(`/payment-methods${params}`)
+    const rawPaymentMethods = await this.request<any[]>(`/payment-methods/${params}`)
     return rawPaymentMethods.map(pm => this.mapPaymentMethodFields(pm))
   }
 
   async getPaymentMethodsWithStats(includeInactive?: boolean): Promise<PaymentMethodWithStats[]> {
     const params = includeInactive ? '?include_inactive=true' : ''
-    const rawPaymentMethods = await this.request<any[]>(`/payment-methods/with-stats${params}`)
+    const rawPaymentMethods = await this.request<any[]>(`/payment-methods/with-stats/${params}`)
     return rawPaymentMethods.map(pm => this.mapPaymentMethodWithStatsFields(pm))
   }
 
   async createPaymentMethod(data: CreatePaymentMethodRequest): Promise<PaymentMethod> {
-    const rawPaymentMethod = await this.request<any>('/payment-methods', {
+    const rawPaymentMethod = await this.request<any>('/payment-methods/', {
       method: 'POST',
       body: JSON.stringify(data)
     })
@@ -707,7 +707,7 @@ class ApiService {
   }
 
   async reorderPaymentMethods(data: BulkPaymentMethodUpdateRequest): Promise<PaymentMethod[]> {
-    const rawPaymentMethods = await this.request<any[]>('/payment-methods/reorder', {
+    const rawPaymentMethods = await this.request<any[]>('/payment-methods/reorder/', {
       method: 'POST',
       body: JSON.stringify({
         payment_methods: data.paymentMethods.map(pm => ({
@@ -720,7 +720,7 @@ class ApiService {
   }
 
   async createDefaultPaymentMethods(): Promise<PaymentMethod[]> {
-    const rawPaymentMethods = await this.request<any[]>('/payment-methods/create-defaults', {
+    const rawPaymentMethods = await this.request<any[]>('/payment-methods/create-defaults/', {
       method: 'POST'
     })
     return rawPaymentMethods.map(pm => this.mapPaymentMethodFields(pm))
