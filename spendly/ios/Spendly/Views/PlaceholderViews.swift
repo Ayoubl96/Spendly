@@ -44,16 +44,9 @@ struct ExpensesView: View {
             .navigationTitle("Expenses")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    HStack {
-                        Button(action: { showingFilters = true }) {
-                            Image(systemName: "line.3.horizontal.decrease.circle")
-                                .foregroundColor(hasActiveFilters ? .blue : .primary)
-                        }
-                        
-                        NavigationLink(destination: ExpenseDebugView()) {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(.orange)
-                        }
+                    Button(action: { showingFilters = true }) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .foregroundColor(hasActiveFilters ? .blue : .primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -68,12 +61,13 @@ struct ExpensesView: View {
             .sheet(isPresented: $showingFilters) {
                 ExpenseFiltersView()
             }
-            .sheet(item: $selectedExpense) { expense in
-                ExpenseDetailView(expense: expense)
-            }
-            .sheet(item: $editingExpense) { expense in
-                EditExpenseView(expense: expense)
-            }
+            // TODO: Add back when views are included in project
+            // .sheet(item: $selectedExpense) { expense in
+            //     ExpenseDetailView(expense: expense)
+            // }
+            // .sheet(item: $editingExpense) { expense in
+            //     EditExpenseView(expense: expense)
+            // }
             .alert("Delete Expense", isPresented: $showingDeleteAlert) {
                 Button("Cancel", role: .cancel) { 
                     expenseToDelete = nil 
@@ -126,8 +120,8 @@ struct ExpensesView: View {
                     ForEach(expenseStore.filteredExpenses) { expense in
                         ExpenseRowView(
                             expense: expense,
-                            onTap: { selectedExpense = $0 },
-                            onEdit: { editingExpense = $0 },
+                            onTap: nil, // TODO: Re-enable when ExpenseDetailView is added to project
+                            onEdit: nil, // TODO: Re-enable when EditExpenseView is added to project  
                             onDelete: { 
                                 expenseToDelete = $0
                                 showingDeleteAlert = true
@@ -168,7 +162,10 @@ struct ExpensesView: View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 summaryHeaderView
-                CategorySummaryView(expenses: expenseStore.filteredExpenses)
+                // TODO: Add back when CategorySummaryView is included in project
+                Text("Category Summary View Coming Soon")
+                    .foregroundColor(.secondary)
+                    .padding()
             }
             .padding()
         }

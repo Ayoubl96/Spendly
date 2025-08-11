@@ -193,48 +193,67 @@ struct Expense: Codable, Identifiable {
         
         // Flexible date decoding to handle multiple backend formats
         func parseDate(from string: String, key: CodingKeys) throws -> Date {
-            let formatters = [
-                // ISO8601 with fractional seconds
-                {
+            print("🗓️ Parsing date: '\(string)' for key: \(key)")
+            
+            // Try date-only format first (for expense_date)
+            if string.count == 10 && string.contains("-") && !string.contains("T") {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+                dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+                dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+                
+                if let date = dateFormatter.date(from: string) {
+                    print("✅ Parsed date-only format: \(date)")
+                    return date
+                }
+            }
+            
+            // Try timestamp formats
+            let formatters: [(DateFormatter, String)] = [
+                // ISO8601 with fractional seconds (backend format)
+                ({
                     let f = DateFormatter()
                     f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
                     f.locale = Locale(identifier: "en_US_POSIX")
                     f.timeZone = TimeZone(secondsFromGMT: 0)
                     return f
-                }(),
-                // ISO8601 standard
-                ISO8601DateFormatter(),
-                // Date only format
-                {
+                }(), "ISO8601 with fractional seconds"),
+                
+                // Standard ISO8601 without fractional seconds
+                ({
                     let f = DateFormatter()
-                    f.dateFormat = "yyyy-MM-dd"
+                    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
                     f.locale = Locale(identifier: "en_US_POSIX")
                     f.timeZone = TimeZone(secondsFromGMT: 0)
                     return f
-                }(),
-                // Alternative ISO format
-                {
+                }(), "ISO8601 standard"),
+                
+                // ISO8601 with Z suffix
+                ({
                     let f = DateFormatter()
                     f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
                     f.locale = Locale(identifier: "en_US_POSIX")
                     f.timeZone = TimeZone(secondsFromGMT: 0)
                     return f
-                }()
+                }(), "ISO8601 with Z")
             ]
             
-            for formatter in formatters {
+            for (formatter, description) in formatters {
                 if let date = formatter.date(from: string) {
+                    print("✅ Parsed with \(description): \(date)")
                     return date
                 }
             }
             
-            // If all formatters fail, try ISO8601DateFormatter with fractional seconds
+            // Try ISO8601DateFormatter as fallback
             let iso8601 = ISO8601DateFormatter()
             iso8601.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             if let date = iso8601.date(from: string) {
+                print("✅ Parsed with ISO8601DateFormatter: \(date)")
                 return date
             }
             
+            print("❌ Failed to parse date: '\(string)'")
             throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Date string '\(string)' does not match any expected format")
         }
         

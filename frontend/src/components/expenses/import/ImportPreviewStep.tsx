@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import { CategorySelect, CategorySubcategorySelect } from '../../ui/category-select';
+import { PaymentMethodSelect } from '../../ui/payment-method-select';
 import { 
   CheckCircle, 
   AlertTriangle, 
@@ -112,6 +113,7 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [bulkCategoryId, setBulkCategoryId] = useState<string>('');
   const [bulkSubcategoryId, setBulkSubcategoryId] = useState<string>('');
+  const [bulkPaymentMethodId, setBulkPaymentMethodId] = useState<string>('');
   const [selectedExpenses, setSelectedExpenses] = useState<Set<number>>(new Set());
   const [categories, setCategories] = useState<CategoryTree[]>([]);
   const [genericTags, setGenericTags] = useState<string[]>([]);
@@ -173,6 +175,26 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
     setBulkCategoryId('');
     setBulkSubcategoryId('');
   }, [bulkCategoryId, bulkSubcategoryId, selectedExpenses, filteredExpenses]);
+
+  const handleBulkPaymentMethodUpdate = useCallback(() => {
+    if (!bulkPaymentMethodId) return;
+    
+    const indicesToUpdate = selectedExpenses.size > 0 
+      ? Array.from(selectedExpenses)
+      : filteredExpenses.map((_, index) => index);
+
+    setExpenses(prev => prev.map((expense, i) => 
+      indicesToUpdate.includes(i) 
+        ? { 
+            ...expense, 
+            payment_method_id: bulkPaymentMethodId
+          }
+        : expense
+    ));
+    
+    setSelectedExpenses(new Set());
+    setBulkPaymentMethodId('');
+  }, [bulkPaymentMethodId, selectedExpenses, filteredExpenses]);
 
   const handleSelectExpense = useCallback((index: number, selected: boolean) => {
     setSelectedExpenses(prev => {
@@ -355,7 +377,7 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
               onSubcategoryChange={(value) => setBulkSubcategoryId(value || '')}
               categoryPlaceholder="Bulk assign category..."
               subcategoryPlaceholder="Bulk assign subcategory..."
-              className="flex-1 max-w-2xl"
+              className="flex-1 max-w-xl"
               height="h-8"
             />
             <Button
@@ -364,7 +386,30 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
               size="sm"
             >
               <Tag className="w-4 h-4 mr-2" />
-              Apply
+              Apply Categories
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-gray-700">Bulk Payment Method:</span>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <PaymentMethodSelect
+              value={bulkPaymentMethodId || null}
+              onChange={(value) => setBulkPaymentMethodId(value || '')}
+              placeholder="Bulk assign payment method..."
+              className="w-80 h-8"
+            />
+            <Button
+              onClick={handleBulkPaymentMethodUpdate}
+              disabled={!bulkPaymentMethodId}
+              size="sm"
+            >
+              <Tag className="w-4 h-4 mr-2" />
+              Apply Payment Method
             </Button>
           </div>
         </div>
@@ -453,6 +498,9 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
                   Subcategory
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Payment Method
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tags
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -521,6 +569,16 @@ export const ImportPreviewStep: React.FC<ImportPreviewStepProps> = ({
                       placeholder="Select subcategory..."
                       disabled={expense.is_duplicate || expense.excluded || !expense.category_id}
                       height="h-8"
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <PaymentMethodSelect
+                      value={expense.payment_method_id || null}
+                      onChange={(paymentMethodId) => handleExpenseUpdate(index, { 
+                        payment_method_id: paymentMethodId || undefined
+                      })}
+                      placeholder="Select payment method..."
+                      className="w-48 h-8"
                     />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

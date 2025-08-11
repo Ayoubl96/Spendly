@@ -33,7 +33,8 @@ env.test
 env.local
 env.development
 env.production
-.env-producation
+.env-production
+
 
 # PyCharm
 .idea/
@@ -96,3 +97,9 @@ backend/uploads/
 
 # Excel temporary files
 ~$*
+
+# iOS
+.DS_Store
+.build/
+.xcode.userdata/
+.xcode.userdata/

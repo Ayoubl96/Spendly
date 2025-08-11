@@ -425,7 +425,8 @@ export interface ImportExpenseData {
   currency: string
   description: string
   vendor?: string
-  payment_method?: 'cash' | 'card' | 'bank_transfer' | 'other'
+  payment_method?: 'cash' | 'card' | 'bank_transfer' | 'other'  // Legacy
+  payment_method_id?: string  // New user payment method reference
   notes?: string
   category_id?: string
   subcategory_id?: string

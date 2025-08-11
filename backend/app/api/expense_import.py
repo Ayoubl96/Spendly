@@ -147,6 +147,7 @@ async def commit_expense_import(
                     category_id=expense_data.get('category_id'),
                     subcategory_id=expense_data.get('subcategory_id'),
                     payment_method=expense_data.get('payment_method'),
+                    payment_method_id=expense_data.get('payment_method_id'),
                     vendor=expense_data.get('vendor'),
                     notes=expense_data.get('notes'),
                     tags=expense_tags
