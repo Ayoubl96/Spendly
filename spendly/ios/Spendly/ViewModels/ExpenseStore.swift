@@ -127,12 +127,14 @@ class ExpenseStore: ObservableObject {
     func applyFilters() {
         filteredExpenses = expenses
         
-        // Apply search filter
-        if !searchText.isEmpty {
+        // Apply search filter (including both searchText and filters.search)
+        let searchQuery = !searchText.isEmpty ? searchText : (filters.search ?? "")
+        if !searchQuery.isEmpty {
             filteredExpenses = filteredExpenses.filter { expense in
-                expense.description.localizedCaseInsensitiveContains(searchText) ||
-                (expense.vendor?.localizedCaseInsensitiveContains(searchText) ?? false) ||
-                (expense.notes?.localizedCaseInsensitiveContains(searchText) ?? false)
+                expense.description.localizedCaseInsensitiveContains(searchQuery) ||
+                (expense.vendor?.localizedCaseInsensitiveContains(searchQuery) ?? false) ||
+                (expense.notes?.localizedCaseInsensitiveContains(searchQuery) ?? false) ||
+                (expense.location?.localizedCaseInsensitiveContains(searchQuery) ?? false)
             }
         }
         
@@ -145,11 +147,16 @@ class ExpenseStore: ObservableObject {
             filteredExpenses = filteredExpenses.filter { $0.expenseDate <= endDate }
         }
         
-        // Apply category filter
+        // Apply category filter (includes both category and subcategory)
         if let categoryId = filters.categoryId {
-            filteredExpenses = filteredExpenses.filter { 
-                $0.categoryId == categoryId || $0.subcategoryId == categoryId
+            filteredExpenses = filteredExpenses.filter { expense in
+                expense.categoryId == categoryId || expense.subcategoryId == categoryId
             }
+        }
+        
+        // Apply subcategory filter
+        if let subcategoryId = filters.subcategoryId {
+            filteredExpenses = filteredExpenses.filter { $0.subcategoryId == subcategoryId }
         }
         
         // Apply currency filter
@@ -159,16 +166,42 @@ class ExpenseStore: ObservableObject {
         
         // Apply payment method filter
         if let paymentMethod = filters.paymentMethod {
-            filteredExpenses = filteredExpenses.filter { $0.paymentMethodId == paymentMethod.id }
+            filteredExpenses = filteredExpenses.filter { expense in
+                expense.paymentMethodId == paymentMethod.id
+            }
         }
         
-        // Apply amount filters
+        // Apply amount filters (use base currency amount if available)
         if let minAmount = filters.minAmount {
-            filteredExpenses = filteredExpenses.filter { $0.amount >= minAmount }
+            filteredExpenses = filteredExpenses.filter { expense in
+                let amount = expense.amountInBaseCurrency ?? expense.amount
+                return amount >= minAmount
+            }
         }
         
         if let maxAmount = filters.maxAmount {
-            filteredExpenses = filteredExpenses.filter { $0.amount <= maxAmount }
+            filteredExpenses = filteredExpenses.filter { expense in
+                let amount = expense.amountInBaseCurrency ?? expense.amount
+                return amount <= maxAmount
+            }
+        }
+        
+        // Apply tags filter
+        if let filterTags = filters.tags, !filterTags.isEmpty {
+            filteredExpenses = filteredExpenses.filter { expense in
+                guard let expenseTags = expense.tags else { return false }
+                // Check if any of the filter tags match any of the expense tags
+                return filterTags.contains { filterTag in
+                    expenseTags.contains { expenseTag in
+                        expenseTag.localizedCaseInsensitiveContains(filterTag)
+                    }
+                }
+            }
+        }
+        
+        // Apply shared filter
+        if let isShared = filters.isShared {
+            filteredExpenses = filteredExpenses.filter { $0.isShared == isShared }
         }
         
         // Sort by date (newest first)
@@ -188,4 +221,85 @@ class ExpenseStore: ObservableObject {
         guard let categoryId = categoryId else { return "Uncategorized" }
         return categories.first { $0.id == categoryId }?.name ?? "Unknown"
     }
+    
+    // MARK: - Helper Methods
+    
+    func clearFilters() {
+        filters = ExpenseFilters()
+        searchText = ""
+        applyFilters()
+    }
+    
+    func hasActiveFilters() -> Bool {
+        return filters.startDate != nil ||
+               filters.endDate != nil ||
+               filters.categoryId != nil ||
+               filters.subcategoryId != nil ||
+               filters.currency != nil ||
+               filters.paymentMethod != nil ||
+               filters.minAmount != nil ||
+               filters.maxAmount != nil ||
+               filters.isShared != nil ||
+               !(filters.search?.isEmpty ?? true) ||
+               !(filters.tags?.isEmpty ?? true) ||
+               !searchText.isEmpty
+    }
+    
+    func getExpensesByCategory() -> [String: [Expense]] {
+        return Dictionary(grouping: filteredExpenses) { expense in
+            expense.categoryId ?? "uncategorized"
+        }
+    }
+    
+    func getExpensesByMonth() -> [String: [Expense]] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM"
+        
+        return Dictionary(grouping: filteredExpenses) { expense in
+            formatter.string(from: expense.expenseDate)
+        }
+    }
+    
+    func getTotalForCategory(_ categoryId: String) -> Double {
+        return filteredExpenses
+            .filter { $0.categoryId == categoryId || $0.subcategoryId == categoryId }
+            .reduce(0) { $0 + ($1.amountInBaseCurrency ?? $1.amount) }
+    }
+    
+    func getAverageExpenseAmount() -> Double {
+        guard !filteredExpenses.isEmpty else { return 0 }
+        return totalAmount / Double(filteredExpenses.count)
+    }
+    
+    func getExpenseCount(for period: ExpensePeriod) -> Int {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        switch period {
+        case .today:
+            let startOfDay = calendar.startOfDay(for: now)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+            return expenses.filter { $0.expenseDate >= startOfDay && $0.expenseDate < endOfDay }.count
+            
+        case .thisWeek:
+            let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? now
+            let endOfWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: startOfWeek)!
+            return expenses.filter { $0.expenseDate >= startOfWeek && $0.expenseDate < endOfWeek }.count
+            
+        case .thisMonth:
+            return thisMonthExpenses.count
+            
+        case .thisYear:
+            let startOfYear = calendar.dateInterval(of: .year, for: now)?.start ?? now
+            let endOfYear = calendar.date(byAdding: .year, value: 1, to: startOfYear)!
+            return expenses.filter { $0.expenseDate >= startOfYear && $0.expenseDate < endOfYear }.count
+        }
+    }
+}
+
+enum ExpensePeriod {
+    case today
+    case thisWeek
+    case thisMonth
+    case thisYear
 }

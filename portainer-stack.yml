@@ -81,7 +81,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-https://spendly.ayoublefhim.com,https://spendly-api.ayoublefhim.com}
       - CORS_CREDENTIALS=true
       - FRONTEND_URL=${FRONTEND_URL:-https://spendly.ayoublefhim.com}
-      - BACKEND_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}
+      - BACKEND_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com/}
       - UPLOAD_PATH=/app/uploads
       - UPLOAD_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}/uploads
     volumes:

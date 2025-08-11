@@ -6,28 +6,47 @@ struct ExpensesView: View {
     @EnvironmentObject var categoryStore: CategoryStore
     @State private var showingAddExpense = false
     @State private var showingFilters = false
+    @State private var selectedExpense: Expense?
+    @State private var editingExpense: Expense?
+    @State private var viewMode: ExpenseViewMode = .list
+    @State private var showingDeleteAlert = false
+    @State private var expenseToDelete: Expense?
+    
+    enum ExpenseViewMode {
+        case list, summary
+    }
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(expenseStore.filteredExpenses) { expense in
-                    ExpenseRowView(expense: expense)
+            VStack(spacing: 0) {
+                // View Mode Selector
+                Picker("View Mode", selection: $viewMode) {
+                    HStack {
+                        Image(systemName: "list.bullet")
+                        Text("List")
+                    }.tag(ExpenseViewMode.list)
+                    
+                    HStack {
+                        Image(systemName: "chart.bar")
+                        Text("Summary")
+                    }.tag(ExpenseViewMode.summary)
                 }
-                .onDelete { indexSet in
-                    for index in indexSet {
-                        let expense = expenseStore.filteredExpenses[index]
-                        Task {
-                            await expenseStore.deleteExpense(id: expense.id)
-                        }
-                    }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding()
+                
+                // Content based on view mode
+                if viewMode == .list {
+                    expenseListView
+                } else {
+                    expenseSummaryView
                 }
             }
-            .searchable(text: $expenseStore.searchText)
             .navigationTitle("Expenses")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showingFilters = true }) {
                         Image(systemName: "line.3.horizontal.decrease.circle")
+                            .foregroundColor(hasActiveFilters ? .blue : .primary)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -42,17 +61,201 @@ struct ExpensesView: View {
             .sheet(isPresented: $showingFilters) {
                 ExpenseFiltersView()
             }
+            .sheet(item: $selectedExpense) { expense in
+                ExpenseDetailView(expense: expense)
+            }
+            .sheet(item: $editingExpense) { expense in
+                EditExpenseView(expense: expense)
+            }
+            .alert("Delete Expense", isPresented: $showingDeleteAlert) {
+                Button("Cancel", role: .cancel) { 
+                    expenseToDelete = nil 
+                }
+                Button("Delete", role: .destructive) {
+                    if let expense = expenseToDelete {
+                        Task {
+                            await expenseStore.deleteExpense(id: expense.id)
+                        }
+                    }
+                    expenseToDelete = nil
+                }
+            } message: {
+                Text("Are you sure you want to delete this expense? This action cannot be undone.")
+            }
             .refreshable {
-                await expenseStore.fetchExpenses()
+                await loadData()
             }
             .onAppear {
                 Task {
-                    await expenseStore.fetchExpenses()
-                    await categoryStore.fetchCategories()
+                    await loadData()
                 }
             }
             .onChange(of: expenseStore.searchText) { _ in
                 expenseStore.applyFilters()
+            }
+        }
+    }
+    
+    private var expenseListView: some View {
+        Group {
+            if expenseStore.isLoading && expenseStore.filteredExpenses.isEmpty {
+                VStack {
+                    ProgressView("Loading expenses...")
+                        .padding()
+                    Spacer()
+                }
+            } else if expenseStore.filteredExpenses.isEmpty {
+                emptyStateView
+            } else {
+                List {
+                    // Summary header
+                    if !expenseStore.filteredExpenses.isEmpty {
+                        summaryHeaderView
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+                    }
+                    
+                    // Expense list
+                    ForEach(expenseStore.filteredExpenses) { expense in
+                        ExpenseRowView(
+                            expense: expense,
+                            onTap: { selectedExpense = $0 },
+                            onEdit: { editingExpense = $0 },
+                            onDelete: { 
+                                expenseToDelete = $0
+                                showingDeleteAlert = true
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    }
+                    .onDelete(perform: deleteExpenses)
+                }
+                .listStyle(PlainListStyle())
+                .searchable(text: $expenseStore.searchText, prompt: "Search expenses...")
+            }
+        }
+        .overlay(
+            Group {
+                if expenseStore.isLoading && !expenseStore.filteredExpenses.isEmpty {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Updating...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(radius: 2)
+                        .padding()
+                    }
+                }
+            }
+        )
+    }
+    
+    private var expenseSummaryView: some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                summaryHeaderView
+                CategorySummaryView(expenses: expenseStore.filteredExpenses)
+            }
+            .padding()
+        }
+    }
+    
+    private var summaryHeaderView: some View {
+        VStack(spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Total Expenses")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(expenseStore.totalAmount.formatted(currency: "EUR"))
+                        .font(.title2)
+                        .fontWeight(.bold)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Count")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text("\(expenseStore.filteredExpenses.count)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                }
+            }
+            
+            if hasActiveFilters {
+                HStack {
+                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                        .foregroundColor(.blue)
+                    Text("Filters applied")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    Spacer()
+                    Button("Clear") {
+                        expenseStore.clearFilters()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .padding(.horizontal)
+    }
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "creditcard.circle")
+                .font(.system(size: 60))
+                .foregroundColor(.secondary)
+            
+            VStack(spacing: 8) {
+                Text("No expenses found")
+                    .font(.headline)
+                
+                Text(hasActiveFilters 
+                     ? "Try adjusting your filters or add a new expense to get started."
+                     : "Start tracking your expenses by adding your first transaction.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            
+            Button("Add Your First Expense") {
+                showingAddExpense = true
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var hasActiveFilters: Bool {
+        expenseStore.hasActiveFilters()
+    }
+    
+    private func loadData() async {
+        await expenseStore.fetchExpenses()
+        await categoryStore.fetchCategories()
+    }
+    
+    private func deleteExpenses(offsets: IndexSet) {
+        Task {
+            for index in offsets {
+                let expense = expenseStore.filteredExpenses[index]
+                await expenseStore.deleteExpense(id: expense.id)
             }
         }
     }
@@ -162,47 +365,280 @@ struct AddExpenseView: View {
 struct ExpenseFiltersView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var expenseStore: ExpenseStore
+    @EnvironmentObject var categoryStore: CategoryStore
+    @State private var tempFilters = ExpenseFilters()
+    @State private var minAmountText = ""
+    @State private var maxAmountText = ""
+    @State private var searchText = ""
+    @State private var tagsText = ""
     
     var body: some View {
         NavigationView {
             Form {
+                // Date Range Section
                 Section("Date Range") {
-                    DatePicker("Start Date", 
-                              selection: Binding(
-                                get: { expenseStore.filters.startDate ?? Date() },
-                                set: { expenseStore.filters.startDate = $0 }
-                              ),
-                              displayedComponents: .date)
+                    Toggle("Filter by Start Date", isOn: Binding(
+                        get: { tempFilters.startDate != nil },
+                        set: { newValue in
+                            if newValue {
+                                tempFilters.startDate = Date()
+                            } else {
+                                tempFilters.startDate = nil
+                            }
+                        }
+                    ))
                     
-                    DatePicker("End Date",
-                              selection: Binding(
-                                get: { expenseStore.filters.endDate ?? Date() },
-                                set: { expenseStore.filters.endDate = $0 }
-                              ),
-                              displayedComponents: .date)
+                    if tempFilters.startDate != nil {
+                        DatePicker("Start Date", 
+                                  selection: Binding(
+                                    get: { tempFilters.startDate ?? Date() },
+                                    set: { tempFilters.startDate = $0 }
+                                  ),
+                                  displayedComponents: .date)
+                    }
+                    
+                    Toggle("Filter by End Date", isOn: Binding(
+                        get: { tempFilters.endDate != nil },
+                        set: { newValue in
+                            if newValue {
+                                tempFilters.endDate = Date()
+                            } else {
+                                tempFilters.endDate = nil
+                            }
+                        }
+                    ))
+                    
+                    if tempFilters.endDate != nil {
+                        DatePicker("End Date",
+                                  selection: Binding(
+                                    get: { tempFilters.endDate ?? Date() },
+                                    set: { tempFilters.endDate = $0 }
+                                  ),
+                                  displayedComponents: .date)
+                    }
                 }
                 
-                Section {
-                    Button("Apply Filters") {
-                        Task {
-                            await expenseStore.fetchExpenses()
-                            dismiss()
+                // Category Section
+                Section("Category") {
+                    Picker("Category", selection: Binding(
+                        get: { tempFilters.categoryId ?? "" },
+                        set: { newValue in
+                            tempFilters.categoryId = newValue.isEmpty ? nil : newValue
+                            if newValue.isEmpty {
+                                tempFilters.subcategoryId = nil
+                            }
+                        }
+                    )) {
+                        Text("All Categories").tag("")
+                        ForEach(categoryStore.categories.filter { $0.parentId == nil }) { category in
+                            Text(category.name).tag(category.id)
                         }
                     }
                     
-                    Button("Clear Filters") {
-                        expenseStore.filters = ExpenseFilters()
-                        Task {
-                            await expenseStore.fetchExpenses()
-                            dismiss()
+                    if let categoryId = tempFilters.categoryId, !categoryId.isEmpty {
+                        Picker("Subcategory", selection: Binding(
+                            get: { tempFilters.subcategoryId ?? "" },
+                            set: { newValue in
+                                tempFilters.subcategoryId = newValue.isEmpty ? nil : newValue
+                            }
+                        )) {
+                            Text("All Subcategories").tag("")
+                            ForEach(categoryStore.categories.filter { $0.parentId == categoryId }) { category in
+                                Text(category.name).tag(category.id)
+                            }
                         }
                     }
-                    .foregroundColor(.red)
                 }
+                
+                // Payment Method Section
+                Section("Payment Method") {
+                    Picker("Payment Method", selection: Binding(
+                        get: { tempFilters.paymentMethod?.id ?? "" },
+                        set: { newValue in
+                            // This would need to be adapted based on UserPaymentMethod implementation
+                            tempFilters.paymentMethod = nil
+                        }
+                    )) {
+                        Text("All Payment Methods").tag("")
+                        // TODO: Add user payment methods when available
+                        ForEach(LegacyPaymentMethod.allCases, id: \.self) { method in
+                            Text(method.displayName).tag(method.rawValue)
+                        }
+                    }
+                }
+                
+                // Amount Range Section
+                Section("Amount Range") {
+                    HStack {
+                        Text("Min Amount")
+                        Spacer()
+                        TextField("0.00", text: $minAmountText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 100)
+                    }
+                    
+                    HStack {
+                        Text("Max Amount")
+                        Spacer()
+                        TextField("999.99", text: $maxAmountText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 100)
+                    }
+                }
+                
+                // Currency Section
+                Section("Currency") {
+                    Picker("Currency", selection: Binding(
+                        get: { tempFilters.currency ?? "" },
+                        set: { newValue in
+                            tempFilters.currency = newValue.isEmpty ? nil : newValue
+                        }
+                    )) {
+                        Text("All Currencies").tag("")
+                        // Common currencies
+                        Text("EUR").tag("EUR")
+                        Text("USD").tag("USD")
+                        Text("GBP").tag("GBP")
+                        Text("JPY").tag("JPY")
+                    }
+                }
+                
+                // Search Section
+                Section("Search") {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+                        TextField("Search description, vendor, notes...", text: $searchText)
+                            .textFieldStyle(PlainTextFieldStyle())
+                    }
+                }
+                
+                // Tags Section
+                Section("Tags") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "tag")
+                                .foregroundColor(.secondary)
+                            TextField("Enter tags separated by commas", text: $tagsText)
+                                .textFieldStyle(PlainTextFieldStyle())
+                        }
+                        
+                        Text("Enter tags separated by commas (e.g., business, travel, food)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Actions Section
+                Section {
+                    Button("Apply Filters") {
+                        applyFilters()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .foregroundColor(.white)
+                    .font(.headline)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(10)
+                    
+                    Button("Clear All Filters") {
+                        clearFilters()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .foregroundColor(.red)
+                    .font(.headline)
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(10)
+                }
+                .listRowBackground(Color.clear)
             }
             .navigationTitle("Filters")
-            .navigationBarItems(trailing: Button("Done") { dismiss() })
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Reset") {
+                        resetToCurrentFilters()
+                    }
+                    .foregroundColor(.secondary)
+                }
+            }
+            .onAppear {
+                loadCurrentFilters()
+            }
         }
+    }
+    
+    private func loadCurrentFilters() {
+        tempFilters = expenseStore.filters
+        minAmountText = tempFilters.minAmount != nil ? String(tempFilters.minAmount!) : ""
+        maxAmountText = tempFilters.maxAmount != nil ? String(tempFilters.maxAmount!) : ""
+        searchText = tempFilters.search ?? ""
+        tagsText = tempFilters.tags?.joined(separator: ", ") ?? ""
+    }
+    
+    private func resetToCurrentFilters() {
+        loadCurrentFilters()
+    }
+    
+    private func applyFilters() {
+        // Parse amount filters
+        if !minAmountText.isEmpty, let minAmount = Double(minAmountText) {
+            tempFilters.minAmount = minAmount
+        } else {
+            tempFilters.minAmount = nil
+        }
+        
+        if !maxAmountText.isEmpty, let maxAmount = Double(maxAmountText) {
+            tempFilters.maxAmount = maxAmount
+        } else {
+            tempFilters.maxAmount = nil
+        }
+        
+        // Parse search
+        tempFilters.search = searchText.isEmpty ? nil : searchText
+        
+        // Parse tags
+        if !tagsText.isEmpty {
+            let tags = tagsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            tempFilters.tags = tags.isEmpty ? nil : tags
+        } else {
+            tempFilters.tags = nil
+        }
+        
+        // Apply filters
+        expenseStore.filters = tempFilters
+        expenseStore.applyFilters()
+        
+        Task {
+            await expenseStore.fetchExpenses()
+        }
+        
+        dismiss()
+    }
+    
+    private func clearFilters() {
+        tempFilters = ExpenseFilters()
+        minAmountText = ""
+        maxAmountText = ""
+        searchText = ""
+        tagsText = ""
+        
+        expenseStore.clearFilters()
+        
+        Task {
+            await expenseStore.fetchExpenses()
+        }
+        
+        dismiss()
     }
 }
 
