@@ -51,7 +51,7 @@ class Budget(Base):
     
     # Constraints
     __table_args__ = (
-        CheckConstraint("CAST(amount AS NUMERIC) > 0", name="positive_budget_amount"),
+        CheckConstraint("CAST(amount AS NUMERIC) >= 0", name="positive_budget_amount"),
         CheckConstraint("CAST(alert_threshold AS NUMERIC) > 0 AND CAST(alert_threshold AS NUMERIC) <= 100", name="valid_alert_threshold"),
         CheckConstraint("end_date IS NULL OR end_date > start_date", name="valid_date_range"),
     )
