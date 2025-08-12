@@ -251,13 +251,25 @@ def bulk_update_budgets(
     current_user: User = Depends(get_current_user),
 ):
     """Bulk-update amounts for budgets inside a group (fast edits UI)."""
-    updated = budget_group_crud.bulk_update_amounts(
-        db,
-        budget_group_id=budget_group_id,
-        user_id=current_user.id,
-        request=payload,
-    )
-    return {"updated": updated}
+    try:
+        updated = budget_group_crud.bulk_update_amounts(
+            db,
+            budget_group_id=budget_group_id,
+            user_id=current_user.id,
+            request=payload,
+        )
+        return {"updated": updated}
+    except Exception as e:
+        # Handle database constraint violations gracefully
+        if "positive_budget_amount" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Budget amounts must be greater than 0"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update budgets: {str(e)}"
+        )
 
 
 @router.get("/{budget_group_id}/summary", response_model=BudgetGroupSummary)

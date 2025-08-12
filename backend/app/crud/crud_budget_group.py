@@ -235,6 +235,10 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
         """Bulk update amounts for budgets in a given group. Returns number updated."""
         count = 0
         for item in request.items:
+            # Skip invalid amounts (server-side protection)
+            if item.amount <= 0:
+                continue
+                
             budget = None
             if item.budget_id:
                 budget = db.query(Budget).filter(

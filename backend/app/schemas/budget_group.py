@@ -124,6 +124,12 @@ class BulkBudgetUpdateItem(BaseModel):
     budget_id: Optional[str] = None
     category_id: Optional[str] = None
     amount: Decimal
+    
+    @validator("amount")
+    def validate_amount(cls, v):
+        if v <= 0:
+            raise ValueError("Budget amount must be greater than 0")
+        return v
 
 
 class BulkBudgetsUpdateRequest(BaseModel):

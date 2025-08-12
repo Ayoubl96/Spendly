@@ -30,7 +30,7 @@ interface EditingBudget {
   budgetId?: string
   categoryId: string
   categoryName: string
-  amount: number
+  amount: number | string
   isNew?: boolean
 }
 
@@ -326,12 +326,26 @@ export function BudgetManagementPage() {
     setHasChanges(remainingEdits.length > 0 || editingGroupInfo)
   }
 
-  const handleAmountChange = (categoryId: string, newAmount: number) => {
+  const handleAmountChange = (categoryId: string, newAmount: number | string) => {
     setEditingBudgets(prev => ({
       ...prev,
       [categoryId]: {
         ...prev[categoryId],
-        amount: newAmount
+        amount: typeof newAmount === 'string' ? newAmount : newAmount
+      }
+    }))
+  }
+
+  const handleAmountBlur = (categoryId: string, value: string) => {
+    const numValue = Number(value)
+    // If invalid or zero, default to 1
+    const validAmount = isNaN(numValue) || numValue <= 0 ? 1 : numValue
+    
+    setEditingBudgets(prev => ({
+      ...prev,
+      [categoryId]: {
+        ...prev[categoryId],
+        amount: validAmount
       }
     }))
   }
@@ -399,7 +413,7 @@ export function BudgetManagementPage() {
         for (const newBudget of newBudgets) {
           await createBudget({
             name: `${newBudget.categoryName} Budget`,
-            amount: newBudget.amount,
+            amount: typeof newBudget.amount === 'string' ? Number(newBudget.amount) || 1 : newBudget.amount,
             currency: budgetGroupSummary.budget_group.currency,
             budgetGroupId: budgetGroupId,
             categoryId: newBudget.categoryId,
@@ -415,7 +429,7 @@ export function BudgetManagementPage() {
             items: updatedBudgets.map(budget => ({
               budget_id: budget.budgetId,
               category_id: budget.categoryId,
-              amount: budget.amount
+              amount: typeof budget.amount === 'string' ? Number(budget.amount) || 1 : budget.amount
             }))
           })
         }
@@ -786,10 +800,8 @@ export function BudgetManagementPage() {
                                     <Input
                                       type="number"
                                       value={editingBudget.amount}
-                                      onChange={(e) => handleAmountChange(
-                                        primaryCategory.id, 
-                                        Number(e.target.value) || 0
-                                      )}
+                                      onChange={(e) => handleAmountChange(primaryCategory.id, e.target.value)}
+                                      onBlur={(e) => handleAmountBlur(primaryCategory.id, e.target.value)}
                                       className="w-32"
                                       min="0"
                                       step="0.01"
@@ -877,10 +889,8 @@ export function BudgetManagementPage() {
                                           <Input
                                             type="number"
                                             value={editingSubBudget.amount}
-                                            onChange={(e) => handleAmountChange(
-                                              subcategory.id, 
-                                              Number(e.target.value) || 0
-                                            )}
+                                            onChange={(e) => handleAmountChange(subcategory.id, e.target.value)}
+                                            onBlur={(e) => handleAmountBlur(subcategory.id, e.target.value)}
                                             className="w-32"
                                             min="0"
                                             step="0.01"
