@@ -21,7 +21,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         *, 
         user_id: Any,
         skip: int = 0,
-        limit: int = 100,
+        limit: int = 9000,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         category_id: Optional[Any] = None,
