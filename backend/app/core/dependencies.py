@@ -106,7 +106,7 @@ class CommonQueryParams:
         sort_order: str = "desc"
     ):
         self.page = max(1, page)
-        self.limit = min(max(1, limit), 100)  # Max 100 items per page
+        self.limit = min(max(1, limit), 9000)  # Max 100 items per page
         self.search = search
         self.sort_by = sort_by
         self.sort_order = sort_order.lower() if sort_order.lower() in ["asc", "desc"] else "desc"
