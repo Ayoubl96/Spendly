@@ -3,7 +3,8 @@ import { Card, CardContent } from '../ui/card'
 import { Button } from '../ui/button'
 import { CurrencyAmountDisplay } from '../ui/currency-amount-display'
 import { PaymentMethodDisplay } from './PaymentMethodDisplay'
-import { Expense, Category } from '../../types/api.types'
+import { SharedExpenseDisplay } from './SharedExpenseDisplay'
+import { Expense, ExpenseWithDetails, Category } from '../../types/api.types'
 import { useAuthStore } from '../../stores/auth.store'
 import { formatDate } from '../../lib/utils'
 import { isSameCurrency } from '../../utils/currency'
@@ -22,7 +23,7 @@ import {
 } from 'lucide-react'
 
 interface ExpenseCardProps {
-  expense: Expense
+  expense: Expense | ExpenseWithDetails
   category?: Category
   subcategory?: Category
   onEdit?: (expense: Expense) => void
@@ -74,25 +75,74 @@ export function ExpenseCard({ expense, category, subcategory, onEdit, onDelete }
               </div>
             </div>
             
-            {/* Amount - Prominent Display */}
+            {/* Amount - Enhanced Display for Shared vs Regular Expenses */}
             <div className="text-right">
-              <div className="font-bold text-xl text-gray-900">
-                <CurrencyAmountDisplay 
-                  amount={expense.amount} 
-                  currency={expense.currency}
-                  showCurrencyCode={true}
-                />
-              </div>
-              {/* Converted Amount - Compact */}
-              {expense.amountInBaseCurrency && 
-               expense.exchangeRate && 
-               !isSameCurrency(expense.currency, user?.defaultCurrency || 'EUR') && (
-                <div className="text-sm text-gray-600 mt-1">
-                  <CurrencyAmountDisplay 
-                    amount={expense.amountInBaseCurrency} 
-                    currency={user?.defaultCurrency || 'EUR'}
-                  />
-                  <span className="text-xs ml-1">({expense.exchangeRate} rate)</span>
+              {expense.isShared && expense.userShareAmount !== undefined && expense.userShareAmount > 0 ? (
+                // Shared Expense: Show user's portion prominently, total as secondary
+                <div>
+                  <div className="font-bold text-xl text-blue-600">
+                    <CurrencyAmountDisplay 
+                      amount={expense.userShareAmount} 
+                      currency={expense.currency}
+                      showCurrencyCode={true}
+                    />
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    of <CurrencyAmountDisplay 
+                      amount={expense.amount} 
+                      currency={expense.currency}
+                      showCurrencyCode={false}
+                    /> total
+                  </div>
+                  {expense.userSharePercentage && (
+                    <div className="text-xs text-gray-500">
+                      {(typeof expense.userSharePercentage === 'number' ? expense.userSharePercentage : parseFloat(expense.userSharePercentage || '0')).toFixed(1)}% share
+                    </div>
+                  )}
+                </div>
+              ) : expense.isShared ? (
+                // Shared but user has no portion (0% share)
+                <div>
+                  <div className="font-bold text-xl text-gray-400">
+                    <CurrencyAmountDisplay 
+                      amount={0} 
+                      currency={expense.currency}
+                      showCurrencyCode={true}
+                    />
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    of <CurrencyAmountDisplay 
+                      amount={expense.amount} 
+                      currency={expense.currency}
+                      showCurrencyCode={false}
+                    /> total
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    0% share
+                  </div>
+                </div>
+              ) : (
+                // Regular Expense: Show full amount
+                <div>
+                  <div className="font-bold text-xl text-gray-900">
+                    <CurrencyAmountDisplay 
+                      amount={expense.amount} 
+                      currency={expense.currency}
+                      showCurrencyCode={true}
+                    />
+                  </div>
+                  {/* Converted Amount - Compact */}
+                  {expense.amountInBaseCurrency && 
+                   expense.exchangeRate && 
+                   !isSameCurrency(expense.currency, user?.defaultCurrency || 'EUR') && (
+                    <div className="text-sm text-gray-600 mt-1">
+                      <CurrencyAmountDisplay 
+                        amount={expense.amountInBaseCurrency} 
+                        currency={user?.defaultCurrency || 'EUR'}
+                      />
+                      <span className="text-xs ml-1">({expense.exchangeRate} rate)</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -173,17 +223,7 @@ export function ExpenseCard({ expense, category, subcategory, onEdit, onDelete }
               )}
 
               {/* Shared Status */}
-              {expense.isShared && (
-                <div className="flex items-center gap-2">
-                  <div className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700 border border-green-200">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-1" />
-                    Shared
-                    {expense.sharedWith && expense.sharedWith.length > 0 && (
-                      <span className="ml-1">({expense.sharedWith.length})</span>
-                    )}
-                  </div>
-                </div>
-              )}
+              <SharedExpenseDisplay expense={expense} showDetails={true} />
             </div>
           </div>
 

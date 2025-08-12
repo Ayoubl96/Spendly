@@ -18,6 +18,8 @@ import {
   BudgetSummary,
   BudgetPerformance,
   BudgetGroup,
+  ExpenseShare,
+  ExpenseShareCreate,
   BudgetGroupList,
   BudgetGroupSummary,
   BudgetGroupWithBudgets,
@@ -152,11 +154,41 @@ class ApiService {
 
   // User endpoints
   async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/users/')
+    const response = await this.request<any[]>('/users/')
+    return response.map(user => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      defaultCurrency: user.default_currency,
+      timezone: user.timezone,
+      dateFormat: user.date_format,
+      language: user.language,
+      isActive: user.is_active,
+      emailVerified: user.email_verified,
+      lastLoginAt: user.last_login_at,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    }))
   }
 
   async getCurrentUser(): Promise<User> {
-    return this.request<User>('/users/me')
+    const user = await this.request<any>('/users/me')
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      defaultCurrency: user.default_currency,
+      timezone: user.timezone,
+      dateFormat: user.date_format,
+      language: user.language,
+      isActive: user.is_active,
+      emailVerified: user.email_verified,
+      lastLoginAt: user.last_login_at,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    }
   }
 
   async updateProfile(data: Partial<User>): Promise<User> {
@@ -183,7 +215,22 @@ class ApiService {
       isShared: expense.is_shared,
       sharedWith: expense.shared_with,
       createdAt: expense.created_at,
-      updatedAt: expense.updated_at
+      updatedAt: expense.updated_at,
+      // Map shared expense fields
+      userShareAmount: expense.user_share_amount ? parseFloat(expense.user_share_amount) : undefined,
+      userSharePercentage: expense.user_share_percentage ? parseFloat(expense.user_share_percentage) : undefined,
+      expenseShares: expense.expense_shares ? expense.expense_shares.map((share: any) => ({
+        id: share.id,
+        expenseId: share.expense_id,
+        userId: share.user_id,
+        sharePercentage: parseFloat(share.share_percentage),
+        shareAmount: parseFloat(share.share_amount),
+        currency: share.currency,
+        shareType: share.share_type,
+        customAmount: share.custom_amount ? parseFloat(share.custom_amount) : undefined,
+        createdAt: share.created_at,
+        updatedAt: share.updated_at
+      })) : []
     }
   }
 
@@ -235,8 +282,19 @@ class ApiService {
         location: data.location,
         vendor: data.vendor,
         is_shared: data.isShared,
-        shared_with: data.sharedWith,
+        shared_with: data.sharedWith,  // Legacy support
         tags: data.tags,
+        shared_expense_config: data.sharedExpenseConfig ? {
+          participants: data.sharedExpenseConfig.participants.map(p => ({
+            user_id: p.userId,
+            share_percentage: p.sharePercentage,
+            share_amount: p.shareAmount,
+            currency: p.currency,
+            share_type: p.shareType || 'percentage',
+            custom_amount: p.customAmount
+          })),
+          auto_calculate: data.sharedExpenseConfig.autoCalculate
+        } : undefined,
       }),
     })
     return this.mapExpenseFields(rawExpense)
@@ -269,6 +327,39 @@ class ApiService {
 
   async deleteExpense(id: string): Promise<void> {
     await this.request(`/expenses/${id}`, { method: 'DELETE' })
+  }
+
+  // Shared Expense Methods
+  async getExpenseShares(expenseId: string): Promise<ExpenseShare[]> {
+    const shares = await this.request<any[]>(`/expenses/${expenseId}/shares`)
+    return shares.map(share => ({
+      id: share.id,
+      expenseId: expenseId,
+      userId: share.user_id,
+      sharePercentage: share.share_percentage,
+      shareAmount: share.share_amount,
+      currency: share.currency,
+      shareType: share.share_type,
+      customAmount: share.custom_amount,
+      createdAt: share.created_at || '',
+      updatedAt: share.updated_at || ''
+    }))
+  }
+
+  async updateExpenseShares(expenseId: string, participants: ExpenseShareCreate[]): Promise<void> {
+    await this.request(`/expenses/${expenseId}/shares`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        participants: participants.map(p => ({
+          user_id: p.userId,
+          share_percentage: p.sharePercentage,
+          share_amount: p.shareAmount,
+          currency: p.currency,
+          share_type: p.shareType || 'percentage',
+          custom_amount: p.customAmount
+        }))
+      }),
+    })
   }
 
   async getExpenseSummary(year: number, month: number): Promise<ExpenseSummary> {

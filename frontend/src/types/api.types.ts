@@ -143,6 +143,34 @@ export interface CurrencyConversionResponse {
   conversion_date: string
 }
 
+// Shared Expense Types
+export interface ExpenseShare {
+  id: string
+  expenseId: string
+  userId: string
+  sharePercentage: number
+  shareAmount: number
+  currency: string
+  shareType: 'percentage' | 'fixed_amount' | 'equal'
+  customAmount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ExpenseShareCreate {
+  userId: string
+  sharePercentage: number
+  shareAmount: number
+  currency: string
+  shareType?: 'percentage' | 'fixed_amount' | 'equal'
+  customAmount?: number
+}
+
+export interface SharedExpenseConfig {
+  participants: ExpenseShareCreate[]
+  autoCalculate?: boolean
+}
+
 // Expense Types
 export interface Expense {
   id: string
@@ -166,6 +194,22 @@ export interface Expense {
   tags?: string[]
   createdAt: string
   updatedAt: string
+  // New shared expense fields
+  userShareAmount?: number    // The current user's share amount
+  userSharePercentage?: number  // The current user's share percentage
+}
+
+export interface ExpenseShare {
+  id: string
+  expenseId: string
+  userId: string
+  sharePercentage: number
+  shareAmount: number
+  currency: string
+  shareType: 'percentage' | 'fixed_amount' | 'equal'
+  customAmount?: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ExpenseWithDetails extends Expense {
@@ -173,6 +217,7 @@ export interface ExpenseWithDetails extends Expense {
   subcategory?: Category
   currencyInfo?: Currency
   attachments: ExpenseAttachment[]
+  expenseShares: ExpenseShare[]
 }
 
 export interface ExpenseAttachment {
@@ -199,11 +244,13 @@ export interface CreateExpenseRequest {
   location?: string
   vendor?: string
   isShared?: boolean
-  sharedWith?: string[]
+  sharedWith?: string[]  // Legacy - keeping for backward compatibility
   tags?: string[]
   // Currency conversion fields
   amount_in_base_currency?: number
   exchange_rate?: number
+  // New shared expense configuration
+  sharedExpenseConfig?: SharedExpenseConfig
 }
 
 // Budget Types

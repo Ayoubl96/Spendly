@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc, asc, Text
 
 from app.crud.base import CRUDBase
-from app.db.models.expense import Expense, ExpenseAttachment, SharedExpense
-from app.schemas.expense import ExpenseCreate, ExpenseUpdate
+from app.db.models.expense import Expense, ExpenseAttachment, SharedExpense, ExpenseShare
+from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseShareCreate
 
 
 class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
@@ -179,7 +179,9 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         obj_in: ExpenseCreate, 
         user_id: Any
     ) -> Expense:
-        """Create a new expense for a user"""
+        """Create a new expense for a user with shared expense support"""
+        from decimal import Decimal
+        
         db_obj = Expense(
             amount=str(obj_in.amount),
             currency=obj_in.currency,
@@ -202,6 +204,47 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
+        
+        # Handle shared expense configuration
+        if obj_in.is_shared and obj_in.shared_expense_config:
+            
+            total_amount = Decimal(obj_in.amount_in_base_currency or obj_in.amount)
+            participants = obj_in.shared_expense_config.participants
+            
+            # Process share configuration
+            if obj_in.shared_expense_config.auto_calculate:
+                # Auto-calculate equal shares if requested
+                equal_percentage = Decimal("100") / Decimal(len(participants))
+                for participant in participants:
+                    if participant.share_type == "equal":
+                        participant.share_percentage = equal_percentage
+                        participant.share_amount = (total_amount * equal_percentage / Decimal("100"))
+            
+            # Create expense shares
+            for participant in participants:
+                share_amount = participant.share_amount
+                if not share_amount:
+                    # Calculate based on percentage if amount not provided
+                    share_amount = (total_amount * participant.share_percentage / Decimal("100"))
+                
+                # Create expense share directly to avoid circular import
+                expense_share = ExpenseShare(
+                    expense_id=db_obj.id,
+                    user_id=participant.user_id,
+                    share_percentage=str(participant.share_percentage),
+                    share_amount=str(share_amount),
+                    currency=obj_in.currency,
+                    share_type=participant.share_type,
+                    custom_amount=str(participant.custom_amount) if participant.custom_amount else None
+                )
+                db.add(expense_share)
+            
+            # Commit the expense shares
+            db.commit()
+            
+            # Refresh the expense object to load the relationships
+            db.refresh(db_obj)
+        
         return db_obj
     
     def get_monthly_summary(
@@ -360,6 +403,96 @@ class CRUDExpenseAttachment(CRUDBase[ExpenseAttachment, dict, dict]):
         )
 
 
+class CRUDExpenseShare(CRUDBase[ExpenseShare, ExpenseShareCreate, dict]):
+    """CRUD operations for ExpenseShare"""
+    
+    def create_share(
+        self,
+        db: Session,
+        *,
+        expense_id: Any,
+        user_id: Any,
+        share_percentage: Any,
+        share_amount: Any,
+        currency: str,
+        share_type: str = "percentage",
+        custom_amount: Any = None
+    ) -> ExpenseShare:
+        """Create a new expense share"""
+        db_obj = ExpenseShare(
+            expense_id=expense_id,
+            user_id=user_id,
+            share_percentage=str(share_percentage),
+            share_amount=str(share_amount),
+            currency=currency,
+            share_type=share_type,
+            custom_amount=str(custom_amount) if custom_amount else None
+        )
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+    
+    def get_by_expense(self, db: Session, *, expense_id: Any) -> List[ExpenseShare]:
+        """Get all shares for an expense"""
+        return (
+            db.query(ExpenseShare)
+            .filter(ExpenseShare.expense_id == expense_id)
+            .all()
+        )
+    
+    def get_by_user_and_expense(self, db: Session, *, user_id: Any, expense_id: Any) -> Optional[ExpenseShare]:
+        """Get a specific user's share for an expense"""
+        return (
+            db.query(ExpenseShare)
+            .filter(ExpenseShare.user_id == user_id, ExpenseShare.expense_id == expense_id)
+            .first()
+        )
+    
+    def delete_by_expense(self, db: Session, *, expense_id: Any) -> int:
+        """Delete all shares for an expense"""
+        deleted_count = (
+            db.query(ExpenseShare)
+            .filter(ExpenseShare.expense_id == expense_id)
+            .delete()
+        )
+        db.commit()
+        return deleted_count
+    
+    def update_shares_for_expense(
+        self, 
+        db: Session, 
+        *, 
+        expense_id: Any, 
+        shares: List[ExpenseShareCreate]
+    ) -> List[ExpenseShare]:
+        """Update all shares for an expense (replace existing)"""
+        # Delete existing shares
+        self.delete_by_expense(db, expense_id=expense_id)
+        
+        # Create new shares
+        created_shares = []
+        for share_data in shares:
+            db_obj = ExpenseShare(
+                expense_id=expense_id,
+                user_id=share_data.user_id,
+                share_percentage=str(share_data.share_percentage),
+                share_amount=str(share_data.share_amount),
+                currency=share_data.currency,
+                share_type=share_data.share_type,
+                custom_amount=str(share_data.custom_amount) if share_data.custom_amount else None
+            )
+            db.add(db_obj)
+            created_shares.append(db_obj)
+        
+        db.commit()
+        for share in created_shares:
+            db.refresh(share)
+        
+        return created_shares
+
+
 # Create instances
 expense_crud = CRUDExpense(Expense)
 expense_attachment_crud = CRUDExpenseAttachment(ExpenseAttachment)
+expense_share_crud = CRUDExpenseShare(ExpenseShare)

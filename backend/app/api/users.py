@@ -20,11 +20,10 @@ def read_users(
     current_user: UserModel = Depends(get_current_user)
 ) -> Any:
     """
-    Get all active users for expense sharing
+    Get all active users for expense sharing (including current user)
     """
     users = db.query(UserModel).filter(
-        UserModel.is_active == True,
-        UserModel.id != current_user.id  # Exclude current user
+        UserModel.is_active == True
     ).all()
     return users
 

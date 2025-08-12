@@ -11,10 +11,11 @@ import { useAuthStore } from '../../stores/auth.store'
 import { useExpenseStore } from '../../stores/expense.store'
 
 import { useCurrencyConversion } from '../../hooks/useCurrencyConversion'
-import { CreateExpenseRequest, Expense } from '../../types/api.types'
+import { CreateExpenseRequest, Expense, ExpenseShareCreate } from '../../types/api.types'
 import { X } from 'lucide-react'
 import { format } from 'date-fns'
 import { isSameCurrency, safeNumberConversion } from '../../utils/currency'
+import { SharedExpenseConfig } from '../expenses/SharedExpenseConfig'
 
 // Component for editing tags in the expense form
 interface TagEditorProps {
@@ -107,7 +108,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
     vendor: '',
     isShared: false,
     tags: [] as string[],
-    sharedWith: [] as string[]
+    sharedWith: [] as string[], // Legacy support
+    sharedExpenseParticipants: [] as ExpenseShareCreate[]
   })
   
   const [convertedAmount, setConvertedAmount] = useState<number>(0)
@@ -193,7 +195,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
           vendor: editExpense.vendor ?? '',
           isShared: editExpense.isShared ?? false,
           tags: editExpense.tags ?? [],
-          sharedWith: editExpense.sharedWith ?? []
+          sharedWith: editExpense.sharedWith ?? [],
+          sharedExpenseParticipants: [] // TODO: Load existing shares from API when editing
         })
 
         // Set conversion data if available
@@ -225,7 +228,8 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
         vendor: '',
         isShared: false,
         tags: [],
-        sharedWith: []
+        sharedWith: [],
+        sharedExpenseParticipants: []
       })
       setConvertedAmount(0)
       setExchangeRate(1)
@@ -263,11 +267,13 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
       location: formData.location || undefined,
       vendor: formData.vendor || undefined,
       isShared: formData.isShared,
-      sharedWith: formData.isShared && formData.sharedWith.length > 0 ? formData.sharedWith : undefined,
-      tags: formData.tags && formData.tags.length > 0 ? formData.tags : undefined
+      sharedWith: formData.isShared && formData.sharedWith.length > 0 ? formData.sharedWith : undefined, // Legacy support
+      tags: formData.tags && formData.tags.length > 0 ? formData.tags : undefined,
+      sharedExpenseConfig: formData.isShared && formData.sharedExpenseParticipants.length > 0 ? {
+        participants: formData.sharedExpenseParticipants,
+        autoCalculate: false
+      } : undefined
     }
-
-
 
     // Add conversion data if currencies differ
     if (!isSameCurrency(formData.currency, user?.defaultCurrency || 'EUR')) {
@@ -299,9 +305,25 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
           [name]: checked
         }
         
-        // Reset shared users when isShared is unchecked
-        if (name === 'isShared' && !checked) {
-          newData.sharedWith = []
+        // Handle shared expense logic
+        if (name === 'isShared') {
+          if (!checked) {
+            // Reset shared users when isShared is unchecked
+            newData.sharedWith = []
+            newData.sharedExpenseParticipants = []
+          } else {
+            // Auto-include current user when isShared is checked
+            if (user && user.id) {
+              newData.sharedExpenseParticipants = [{
+                userId: user.id,
+                sharePercentage: 100,
+                shareAmount: parseFloat(prev.amount) || 0,
+                currency: prev.currency,
+                shareType: 'equal',
+                customAmount: undefined
+              }]
+            }
+          }
         }
         
         return newData
@@ -341,6 +363,13 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
         sharedWith: newSharedWith
       }
     })
+  }
+
+  const handleSharedExpenseParticipantsChange = (participants: ExpenseShareCreate[]) => {
+    setFormData(prev => ({
+      ...prev,
+      sharedExpenseParticipants: participants
+    }))
   }
 
   // Categories are now handled by CategorySubcategorySelect component
@@ -574,36 +603,14 @@ export function ExpenseForm({ isOpen, onClose, onSubmit, editExpense }: ExpenseF
                 </label>
               </div>
 
-              {/* User selection for shared expenses */}
+              {/* Enhanced shared expense configuration */}
               {formData.isShared && (
-                <div className="ml-6 space-y-2">
-                  <label className="text-sm font-medium">Share with:</label>
-                  <div className="max-h-32 overflow-y-auto space-y-1 border rounded-md p-2">
-                    {users.length > 0 ? (
-                      users.map((user) => (
-                        <div key={user.id} className="flex items-center space-x-2">
-                          <input
-                            id={`user-${user.id}`}
-                            type="checkbox"
-                            checked={formData.sharedWith.includes(user.id)}
-                            onChange={() => handleUserToggle(user.id)}
-                            className="h-4 w-4 rounded border border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          />
-                          <label htmlFor={`user-${user.id}`} className="text-sm cursor-pointer">
-                            {user.firstName} {user.lastName} ({user.email})
-                          </label>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No other users available</p>
-                    )}
-                  </div>
-                  {formData.sharedWith.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Selected {formData.sharedWith.length} user(s)
-                    </p>
-                  )}
-                </div>
+                <SharedExpenseConfig
+                  totalAmount={parseFloat(formData.amount) || 0}
+                  currency={formData.currency}
+                  participants={formData.sharedExpenseParticipants}
+                  onParticipantsChange={handleSharedExpenseParticipantsChange}
+                />
               )}
             </div>
 

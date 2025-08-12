@@ -18,6 +18,29 @@ class PaymentMethod(str, Enum):
     OTHER = "other"
 
 
+# Forward declaration for ExpenseShareCreate
+class ExpenseShareCreate(BaseModel):
+    """Schema for creating an expense share"""
+    user_id: str
+    share_percentage: Decimal
+    share_amount: Decimal
+    currency: str
+    share_type: str = "percentage"  # 'percentage', 'fixed_amount', 'equal'
+    custom_amount: Optional[Decimal] = None
+
+
+class SharedExpenseConfig(BaseModel):
+    """Schema for configuring shared expense participants"""
+    participants: List[ExpenseShareCreate]
+    auto_calculate: bool = True  # Whether to automatically calculate equal splits
+    
+    @validator("participants")
+    def validate_participants(cls, v):
+        if not v or len(v) == 0:
+            raise ValueError("At least one participant is required for shared expenses")
+        return v
+
+
 class ExpenseBase(BaseModel):
     """Base expense schema"""
     amount: Decimal
@@ -45,6 +68,7 @@ class ExpenseCreate(ExpenseBase):
     """Schema for creating an expense"""
     amount_in_base_currency: Optional[Decimal] = None
     exchange_rate: Optional[Decimal] = None
+    shared_expense_config: Optional[SharedExpenseConfig] = None
     
     @validator("amount")
     def validate_amount(cls, v):
@@ -114,6 +138,20 @@ class ExpenseCreate(ExpenseBase):
             values["payment_method"] = None
             
         return v
+    
+    @validator("shared_expense_config", pre=False, always=True)
+    def validate_shared_expense_config(cls, v, values):
+        """Validate shared expense configuration"""
+        is_shared = values.get("is_shared", False)
+        
+        if is_shared and not v:
+            raise ValueError("Shared expense configuration is required when is_shared is True")
+        
+        if not is_shared and v:
+            # Automatically set is_shared to True if config is provided
+            values["is_shared"] = True
+            
+        return v
 
 
 class ExpenseUpdate(ExpenseBase):
@@ -162,6 +200,9 @@ class ExpenseWithDetails(Expense):
     currency_info: Optional[dict] = None
     payment_method_info: Optional[dict] = None
     attachments: List[dict] = []
+    expense_shares: List["ExpenseShare"] = []  # Forward reference
+    user_share_amount: Optional[Decimal] = None  # The current user's share amount
+    user_share_percentage: Optional[Decimal] = None  # The current user's share percentage
 
 
 class ExpenseAttachmentBase(BaseModel):
@@ -192,6 +233,8 @@ class SharedExpenseBase(BaseModel):
     """Base schema for shared expenses"""
     shared_with_user_id: str
     amount_owed: Decimal
+    share_percentage: Decimal
+    share_amount: Decimal
     currency: str
     notes: Optional[str] = None
 
@@ -207,6 +250,27 @@ class SharedExpense(SharedExpenseBase):
     expense_id: str
     is_settled: bool = False
     settled_at: Optional[date] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class ExpenseShareBase(BaseModel):
+    """Base schema for expense shares"""
+    user_id: str
+    share_percentage: Decimal
+    share_amount: Decimal
+    currency: str
+    share_type: str = "percentage"  # 'percentage', 'fixed_amount', 'equal'
+    custom_amount: Optional[Decimal] = None
+
+
+class ExpenseShare(ExpenseShareBase):
+    """Schema for expense share response"""
+    id: str
+    expense_id: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
@@ -259,3 +323,7 @@ class ExpenseImportResult(BaseModel):
     total_count: int
     errors: List[dict] = []
     imported_expenses: List[str] = []  # IDs of imported expenses
+
+
+# Resolve forward references
+ExpenseWithDetails.model_rebuild()
