@@ -338,8 +338,8 @@ export function BudgetManagementPage() {
 
   const handleAmountBlur = (categoryId: string, value: string) => {
     const numValue = Number(value)
-    // If invalid or zero, default to 1
-    const validAmount = isNaN(numValue) || numValue <= 0 ? 1 : numValue
+    // If invalid or negative, default to 0 (zero is now allowed)
+    const validAmount = isNaN(numValue) || numValue < 0 ? 0 : numValue
     
     setEditingBudgets(prev => ({
       ...prev,
@@ -413,7 +413,7 @@ export function BudgetManagementPage() {
         for (const newBudget of newBudgets) {
           await createBudget({
             name: `${newBudget.categoryName} Budget`,
-            amount: typeof newBudget.amount === 'string' ? Number(newBudget.amount) || 1 : newBudget.amount,
+            amount: typeof newBudget.amount === 'string' ? Number(newBudget.amount) || 0 : newBudget.amount,
             currency: budgetGroupSummary.budget_group.currency,
             budgetGroupId: budgetGroupId,
             categoryId: newBudget.categoryId,
@@ -429,7 +429,7 @@ export function BudgetManagementPage() {
             items: updatedBudgets.map(budget => ({
               budget_id: budget.budgetId,
               category_id: budget.categoryId,
-              amount: typeof budget.amount === 'string' ? Number(budget.amount) || 1 : budget.amount
+              amount: typeof budget.amount === 'string' ? Number(budget.amount) || 0 : budget.amount
             }))
           })
         }

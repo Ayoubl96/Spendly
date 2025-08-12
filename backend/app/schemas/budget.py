@@ -57,8 +57,8 @@ class BudgetCreate(BudgetBase):
     
     @validator("amount")
     def validate_amount(cls, v):
-        if v <= 0:
-            raise ValueError("Budget amount must be positive")
+        if v < 0:
+            raise ValueError("Budget amount must be zero or greater")
         return v
     
     @validator("name")

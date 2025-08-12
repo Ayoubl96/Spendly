@@ -127,8 +127,8 @@ class BulkBudgetUpdateItem(BaseModel):
     
     @validator("amount")
     def validate_amount(cls, v):
-        if v <= 0:
-            raise ValueError("Budget amount must be greater than 0")
+        if v < 0:
+            raise ValueError("Budget amount must be zero or greater")
         return v
 
 

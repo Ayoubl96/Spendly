@@ -264,7 +264,7 @@ def bulk_update_budgets(
         if "positive_budget_amount" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Budget amounts must be greater than 0"
+                detail="Budget amounts must be zero or greater"
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

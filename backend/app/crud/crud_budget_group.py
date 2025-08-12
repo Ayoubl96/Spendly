@@ -236,7 +236,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
         count = 0
         for item in request.items:
             # Skip invalid amounts (server-side protection)
-            if item.amount <= 0:
+            if item.amount < 0:
                 continue
                 
             budget = None
