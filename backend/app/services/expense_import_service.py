@@ -41,8 +41,29 @@ class ExpenseImportService:
             except Exception:
                 return "unknown_csv"
         else:
-            # Excel file - check for Intesa San Paolo format
-            return "intesa_sanpaolo"
+            # Excel file - try to detect format by reading a sample
+            try:
+                df_sample = pd.read_excel(file_path, nrows=25, header=None)
+                
+                # Check for Italian bank format (Lista Operazione sheet)
+                for i in range(len(df_sample)):
+                    row = df_sample.iloc[i]
+                    row_str = ' '.join([str(x) for x in row if pd.notna(x)])
+                    if 'Lista Operazione' in row_str or ('Data' in row_str and 'Operazione' in row_str and 'Importo' in row_str):
+                        return "italian_bank_list"
+                
+                # Check for standard Intesa San Paolo format (Data contabile)
+                for i in range(len(df_sample)):
+                    row = df_sample.iloc[i]
+                    row_str = ' '.join([str(x) for x in row if pd.notna(x)])
+                    if 'Data contabile' in row_str:
+                        return "intesa_sanpaolo"
+                
+                # Default to Intesa San Paolo for other Excel files
+                return "intesa_sanpaolo"
+                
+            except Exception:
+                return "intesa_sanpaolo"
     
     def parse_intesa_sanpaolo_file(self, file_path: str) -> List[Dict[str, Any]]:
         """Parse Intesa San Paolo Excel file format"""
@@ -452,16 +473,177 @@ class ExpenseImportService:
             'suggestion_source': 'none'
         }
     
+    def parse_italian_bank_list_file(self, file_path: str) -> List[Dict[str, Any]]:
+        """Parse Italian bank 'Lista Operazione' Excel file format"""
+        try:
+            # Read Excel file without headers first
+            df_raw = pd.read_excel(file_path, header=None)
+            
+            # Find the header row (should be around row 19)
+            header_row = None
+            for i in range(min(25, len(df_raw))):
+                row = df_raw.iloc[i]
+                row_str = ' '.join([str(x) for x in row if pd.notna(x)])
+                if 'Data' in row_str and 'Operazione' in row_str and 'Importo' in row_str:
+                    header_row = i
+                    break
+            
+            if header_row is None:
+                raise ValueError("Could not find header row with transaction columns")
+            
+            # Expected columns based on analysis:
+            # 0: Data, 1: Operazione, 2: Dettagli, 3: Conto o carta, 4: Contabilizzazione, 5: Categoria, 6: Valuta, 7: Importo
+            
+            expenses = []
+            
+            # Process rows after header
+            for i in range(header_row + 1, len(df_raw)):
+                row = df_raw.iloc[i]
+                
+                # Check if this is a transaction row (has date and amount)
+                if pd.notna(row.iloc[0]) and pd.notna(row.iloc[7]):
+                    try:
+                        # Parse date
+                        expense_date = pd.to_datetime(row.iloc[0]).date()
+                        
+                        # Parse amount (negative values are expenses)
+                        amount_value = row.iloc[7]
+                        if isinstance(amount_value, (int, float)) and amount_value < 0:
+                            amount = abs(float(amount_value))
+                            
+                            # Extract fields
+                            operation_type = str(row.iloc[1]) if pd.notna(row.iloc[1]) else ""
+                            vendor_details = str(row.iloc[2]) if pd.notna(row.iloc[2]) else ""
+                            account_card = str(row.iloc[3]) if pd.notna(row.iloc[3]) else ""
+                            accounting_status = str(row.iloc[4]) if pd.notna(row.iloc[4]) else ""
+                            category = str(row.iloc[5]) if pd.notna(row.iloc[5]) else ""
+                            currency = str(row.iloc[6]) if pd.notna(row.iloc[6]) else "EUR"
+                            
+                            # Extract vendor from details
+                            vendor = self._extract_vendor_italian_bank(vendor_details, operation_type)
+                            
+                            # Create description
+                            description = f"{operation_type}: {vendor_details}".strip(": ")
+                            
+                            # Infer payment method from account/card info
+                            payment_method = self._infer_payment_method_italian_bank(account_card, operation_type)
+                            
+                            # Generate unique ID for deduplication (include row index to avoid duplicates)
+                            unique_id = hashlib.md5(
+                                f"{expense_date}_{amount}_{vendor}_{description[:50]}_{i}".encode()
+                            ).hexdigest()[:16]
+                            
+                            # Extract notes from accounting status and category
+                            notes_parts = []
+                            if accounting_status and accounting_status != "CONTABILIZZATO":
+                                notes_parts.append(f"Status: {accounting_status}")
+                            if category and category != "Altre uscite":
+                                notes_parts.append(f"Bank Category: {category}")
+                            notes = "; ".join(notes_parts) if notes_parts else None
+                            
+                            expense_data = {
+                                'unique_id': unique_id,
+                                'expense_date': expense_date.isoformat(),
+                                'amount': amount,
+                                'currency': currency,
+                                'description': description[:200],  # Limit description length
+                                'vendor': vendor,
+                                'payment_method': payment_method,
+                                'notes': notes,
+                                'category_id': None,
+                                'subcategory_id': None,
+                                'tags': [],
+                                'raw_data': {
+                                    'operation_type': operation_type,
+                                    'details': vendor_details,
+                                    'account_card': account_card,
+                                    'accounting_status': accounting_status,
+                                    'bank_category': category,
+                                    'original_amount': amount_value
+                                }
+                            }
+                            
+                            expenses.append(expense_data)
+                            
+                    except Exception as e:
+                        logger.warning(f"Error parsing row {i}: {e}")
+                        continue
+            
+            return expenses
+            
+        except Exception as e:
+            logger.error(f"Error parsing Italian bank list file: {e}")
+            raise ValueError(f"Failed to parse Italian bank file: {str(e)}")
+    
+    def _extract_vendor_italian_bank(self, details: str, operation_type: str) -> Optional[str]:
+        """Extract vendor name from Italian bank transaction details"""
+        if not details:
+            return None
+        
+        details = details.strip()
+        
+        # For POS payments, the vendor is usually at the beginning
+        if 'Pos' in operation_type:
+            # Simple vendor extraction - take the first part before common separators
+            vendor = details.split(' ')[0].strip()
+            if vendor and len(vendor) > 1:
+                return vendor[:50]
+        
+        # For other operations, try to extract meaningful vendor info
+        # Remove common transaction codes and patterns
+        cleaned = details
+        
+        # Remove date patterns (DD/MM or DD/MMYYYY)
+        import re
+        cleaned = re.sub(r'\b\d{2}/\d{2}(\d{4})?\b', '', cleaned)
+        
+        # Remove card number patterns
+        cleaned = re.sub(r'Carta N\.\d+\s+XXXX\s+XXXX\s+\w+', '', cleaned)
+        cleaned = re.sub(r'ABI\s+\d+', '', cleaned)
+        cleaned = re.sub(r'COD\.\d+/\d+', '', cleaned)
+        
+        # Take the first meaningful part
+        parts = cleaned.split()
+        if parts:
+            vendor = parts[0].strip()
+            if vendor and len(vendor) > 2 and not vendor.isdigit():
+                return vendor[:50]
+        
+        return None
+    
+    def _infer_payment_method_italian_bank(self, account_card: str, operation_type: str) -> str:
+        """Infer payment method from Italian bank transaction info"""
+        if not account_card:
+            return 'other'
+        
+        account_card_upper = account_card.upper()
+        operation_upper = operation_type.upper()
+        
+        # Check for card patterns
+        if any(word in account_card_upper for word in ['CARD', 'VISA', 'MASTERCARD', 'MC']):
+            return 'card'
+        elif 'POS' in operation_upper:
+            return 'card'
+        elif 'CONTO' in account_card_upper:
+            if 'TRANSFER' in operation_upper or 'GIROCONTO' in operation_upper:
+                return 'bank_transfer'
+            else:
+                return 'card'  # Assume card for most account transactions
+        else:
+            return 'other'
+    
     def parse_file(self, file_path: str) -> List[Dict[str, Any]]:
         """Parse expense file and return normalized data"""
         file_format = self.detect_file_format(file_path)
         
         if file_format == "intesa_sanpaolo":
             return self.parse_intesa_sanpaolo_file(file_path)
+        elif file_format == "italian_bank_list":
+            return self.parse_italian_bank_list_file(file_path)
         elif file_format == "activity_csv":
             return self.parse_activity_csv_file(file_path)
         else:
-            raise ValueError(f"Unsupported file format: {file_format}. Supported formats: Excel (Intesa San Paolo), CSV (Activity format)")
+            raise ValueError(f"Unsupported file format: {file_format}. Supported formats: Excel (Intesa San Paolo, Italian Bank List), CSV (Activity format)")
     
     def preview_import(
         self, 
