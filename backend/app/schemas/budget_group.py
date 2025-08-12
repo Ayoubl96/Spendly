@@ -186,9 +186,10 @@ class CategorySummary(BaseModel):
     spent: Decimal
     remaining: Decimal
     percentage_used: Optional[Decimal] = None
+    main_category_budgeted: Optional[Decimal] = None  # Main category's own budget (excluding subcategories)
     subcategories: Dict[str, Dict[str, Any]] = {}
     
-    @field_serializer('budgeted', 'spent', 'remaining', 'percentage_used', when_used='json')
+    @field_serializer('budgeted', 'spent', 'remaining', 'percentage_used', 'main_category_budgeted', when_used='json')
     def serialize_decimal(self, value: Optional[Decimal]) -> Optional[float]:
         return float(value) if value is not None else None
 

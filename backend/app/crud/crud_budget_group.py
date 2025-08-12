@@ -314,6 +314,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                     (cat_data["spent"] / cat_data["budgeted"] * 100) 
                     if cat_data["budgeted"] > 0 else Decimal("0")
                 ),
+                main_category_budgeted=cat_data.get("main_category_budgeted", Decimal("0")),
                 subcategories=subcategories
             )
         

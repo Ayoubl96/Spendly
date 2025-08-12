@@ -293,6 +293,7 @@ export interface CategorySummary {
   spent: number
   remaining: number
   percentage_used?: number
+  main_category_budgeted?: number  // Main category's own budget (excluding subcategories)
   subcategories: Record<string, {
     categoryId: string
     categoryName: string

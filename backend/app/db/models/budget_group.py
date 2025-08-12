@@ -127,13 +127,14 @@ class BudgetGroup(Base):
                     "budgeted": Decimal("0"),
                     "spent": Decimal("0"),
                     "remaining": Decimal("0"),
-                    "subcategories": {}
+                    "subcategories": {},
+                    "main_category_budgeted": Decimal("0")  # Track main category's own budget separately
                 }
             
             main_cat = category_summaries[main_category_name]
             
             if subcategory_name:
-                # Add to subcategory
+                # This is a subcategory budget
                 if subcategory_name not in main_cat["subcategories"]:
                     main_cat["subcategories"][subcategory_name] = {
                         "categoryId": category.id,
@@ -147,10 +148,17 @@ class BudgetGroup(Base):
                 subcat["budgeted"] += budget.amount_decimal
                 subcat["spent"] += spent_amount
                 subcat["remaining"] = subcat["budgeted"] - subcat["spent"]
+                
+                # Add subcategory amounts to main category totals
+                main_cat["budgeted"] += budget.amount_decimal
+                main_cat["spent"] += spent_amount
+            else:
+                # This is a main category budget (not a subcategory)
+                main_cat["main_category_budgeted"] += budget.amount_decimal
+                main_cat["budgeted"] += budget.amount_decimal
+                main_cat["spent"] += spent_amount
             
-            # Add to main category totals
-            main_cat["budgeted"] += budget.amount_decimal
-            main_cat["spent"] += spent_amount
+            # Update remaining for main category
             main_cat["remaining"] = main_cat["budgeted"] - main_cat["spent"]
         
         return category_summaries

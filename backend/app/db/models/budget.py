@@ -87,7 +87,7 @@ class Budget(Base):
     def get_spent_amount(self, db) -> Decimal:
         """Get total amount spent against this budget"""
         from app.db.models.expense import Expense
-        from sqlalchemy import func, Numeric
+        from sqlalchemy import func, Numeric, or_
         
         query = db.query(func.sum(func.cast(Expense.amount_in_base_currency, Numeric))).filter(
             Expense.user_id == self.user_id,
@@ -98,7 +98,15 @@ class Budget(Base):
             query = query.filter(Expense.expense_date <= self.end_date)
         
         if self.category_id:
-            query = query.filter(Expense.category_id == self.category_id)
+            # For budget categories, check if expenses are categorized as:
+            # 1. Main category expenses (category_id matches, subcategory_id is null)
+            # 2. Subcategory expenses (subcategory_id matches)
+            query = query.filter(
+                or_(
+                    Expense.category_id == self.category_id,  # Main category or old-style categorization
+                    Expense.subcategory_id == self.category_id  # Subcategory
+                )
+            )
         
         result = query.scalar()
         return Decimal(str(result)) if result else Decimal("0")

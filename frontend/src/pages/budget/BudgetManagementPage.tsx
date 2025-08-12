@@ -44,6 +44,7 @@ interface BudgetItemProps {
   remaining: number
   percentage: number
   isSubcategory?: boolean
+  totalBudget?: number  // Total budget including subcategories (for main categories)
   onEdit: (editingBudget: EditingBudget) => void
   onDelete?: (budget: Budget) => void
   onAdd?: (categoryId: string, categoryName: string) => void
@@ -59,6 +60,7 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
   remaining,
   percentage,
   isSubcategory = false,
+  totalBudget,
   onEdit,
   onDelete,
   onAdd
@@ -117,7 +119,16 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
             <div className="text-xs text-gray-500 mb-1">Budget</div>
             {budget ? (
               <div className="font-semibold">
-                <CurrencyAmountDisplay amount={budget.amount} currency={budget.currency} />
+                <CurrencyAmountDisplay 
+                  amount={totalBudget !== undefined ? totalBudget : budget.amount} 
+                  currency={budget.currency} 
+                />
+                {/* Show individual budget for main categories with subcategories */}
+                {totalBudget !== undefined && totalBudget !== budget.amount && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    Own: <CurrencyAmountDisplay amount={budget.amount} currency={budget.currency} />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-gray-400 text-sm">Not set</div>
@@ -831,6 +842,7 @@ export function BudgetManagementPage() {
                               spent={spent}
                               remaining={remaining}
                               percentage={percentage}
+                              totalBudget={Number(categorySummary?.budgeted) || undefined}
                               onEdit={handleEditBudget}
                               onDelete={handleDeleteBudget}
                               onAdd={handleAddNewBudget}
