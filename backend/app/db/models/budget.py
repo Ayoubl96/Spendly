@@ -87,7 +87,8 @@ class Budget(Base):
     def get_spent_amount(self, db) -> Decimal:
         """Get total amount spent against this budget"""
         from app.db.models.expense import Expense
-        from sqlalchemy import func, Numeric, or_
+        from sqlalchemy import func, Numeric, and_
+        from app.db.models.category import Category
         
         query = db.query(func.sum(func.cast(Expense.amount_in_base_currency, Numeric))).filter(
             Expense.user_id == self.user_id,
@@ -98,15 +99,21 @@ class Budget(Base):
             query = query.filter(Expense.expense_date <= self.end_date)
         
         if self.category_id:
-            # For budget categories, check if expenses are categorized as:
-            # 1. Main category expenses (category_id matches, subcategory_id is null)
-            # 2. Subcategory expenses (subcategory_id matches)
-            query = query.filter(
-                or_(
-                    Expense.category_id == self.category_id,  # Main category or old-style categorization
-                    Expense.subcategory_id == self.category_id  # Subcategory
+            # Get the category to determine if it's a main category or subcategory
+            category = db.query(Category).filter(Category.id == self.category_id).first()
+            
+            if category and category.is_primary_category:
+                # This is a main category budget - only count expenses directly assigned to this main category
+                # (expenses where category_id matches and subcategory_id is null)
+                query = query.filter(
+                    and_(
+                        Expense.category_id == self.category_id,
+                        Expense.subcategory_id.is_(None)
+                    )
                 )
-            )
+            else:
+                # This is a subcategory budget - count expenses assigned to this subcategory
+                query = query.filter(Expense.subcategory_id == self.category_id)
         
         result = query.scalar()
         return Decimal(str(result)) if result else Decimal("0")
