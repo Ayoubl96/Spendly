@@ -314,7 +314,13 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                     (cat_data["spent"] / cat_data["budgeted"] * 100) 
                     if cat_data["budgeted"] > 0 else Decimal("0")
                 ),
-                main_category_budgeted=cat_data.get("main_category_budgeted", Decimal("0")),
+                total_budgeted=cat_data.get("total_budgeted", cat_data["budgeted"]),
+                total_spent=cat_data.get("total_spent", cat_data["spent"]),
+                total_remaining=cat_data.get("total_remaining", cat_data["remaining"]),
+                total_percentage_used=(
+                    (cat_data.get("total_spent", cat_data["spent"]) / cat_data.get("total_budgeted", cat_data["budgeted"]) * 100) 
+                    if cat_data.get("total_budgeted", cat_data["budgeted"]) > 0 else Decimal("0")
+                ),
                 subcategories=subcategories
             )
         

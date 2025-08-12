@@ -124,11 +124,13 @@ class BudgetGroup(Base):
                 category_summaries[main_category_name] = {
                     "categoryId": main_category_id,
                     "categoryName": main_category_name,
-                    "budgeted": Decimal("0"),
-                    "spent": Decimal("0"),
-                    "remaining": Decimal("0"),
-                    "subcategories": {},
-                    "main_category_budgeted": Decimal("0")  # Track main category's own budget separately
+                    "budgeted": Decimal("0"),        # Main category's own budget
+                    "spent": Decimal("0"),           # Main category's own spent
+                    "remaining": Decimal("0"),       # Main category's own remaining
+                    "total_budgeted": Decimal("0"),  # Total including subcategories
+                    "total_spent": Decimal("0"),     # Total spent including subcategories
+                    "total_remaining": Decimal("0"), # Total remaining including subcategories
+                    "subcategories": {}
                 }
             
             main_cat = category_summaries[main_category_name]
@@ -149,17 +151,21 @@ class BudgetGroup(Base):
                 subcat["spent"] += spent_amount
                 subcat["remaining"] = subcat["budgeted"] - subcat["spent"]
                 
-                # Add subcategory amounts to main category totals
-                main_cat["budgeted"] += budget.amount_decimal
-                main_cat["spent"] += spent_amount
+                # Add subcategory amounts to main category totals only
+                main_cat["total_budgeted"] += budget.amount_decimal
+                main_cat["total_spent"] += spent_amount
             else:
                 # This is a main category budget (not a subcategory)
-                main_cat["main_category_budgeted"] += budget.amount_decimal
                 main_cat["budgeted"] += budget.amount_decimal
                 main_cat["spent"] += spent_amount
+                main_cat["remaining"] = main_cat["budgeted"] - main_cat["spent"]
+                
+                # Also add to totals
+                main_cat["total_budgeted"] += budget.amount_decimal
+                main_cat["total_spent"] += spent_amount
             
-            # Update remaining for main category
-            main_cat["remaining"] = main_cat["budgeted"] - main_cat["spent"]
+            # Update total remaining for main category
+            main_cat["total_remaining"] = main_cat["total_budgeted"] - main_cat["total_spent"]
         
         return category_summaries
     

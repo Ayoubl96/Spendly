@@ -289,11 +289,14 @@ export interface BulkBudgetsUpdateRequest {
 export interface CategorySummary {
   categoryId: string
   categoryName: string
-  budgeted: number
-  spent: number
-  remaining: number
-  percentage_used?: number
-  main_category_budgeted?: number  // Main category's own budget (excluding subcategories)
+  budgeted: number                    // Main category's own budget
+  spent: number                       // Main category's own spent
+  remaining: number                   // Main category's own remaining
+  percentage_used?: number            // Main category's own percentage
+  total_budgeted?: number             // Total including subcategories
+  total_spent?: number                // Total spent including subcategories
+  total_remaining?: number            // Total remaining including subcategories
+  total_percentage_used?: number      // Total percentage including subcategories
   subcategories: Record<string, {
     categoryId: string
     categoryName: string

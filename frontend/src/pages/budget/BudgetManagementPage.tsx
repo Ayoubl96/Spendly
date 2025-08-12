@@ -44,7 +44,6 @@ interface BudgetItemProps {
   remaining: number
   percentage: number
   isSubcategory?: boolean
-  totalBudget?: number  // Total budget including subcategories (for main categories)
   onEdit: (editingBudget: EditingBudget) => void
   onDelete?: (budget: Budget) => void
   onAdd?: (categoryId: string, categoryName: string) => void
@@ -60,7 +59,6 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
   remaining,
   percentage,
   isSubcategory = false,
-  totalBudget,
   onEdit,
   onDelete,
   onAdd
@@ -119,16 +117,7 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
             <div className="text-xs text-gray-500 mb-1">Budget</div>
             {budget ? (
               <div className="font-semibold">
-                <CurrencyAmountDisplay 
-                  amount={totalBudget !== undefined ? totalBudget : budget.amount} 
-                  currency={budget.currency} 
-                />
-                {/* Show individual budget for main categories with subcategories */}
-                {totalBudget !== undefined && totalBudget !== budget.amount && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Own: <CurrencyAmountDisplay amount={budget.amount} currency={budget.currency} />
-                  </div>
-                )}
+                <CurrencyAmountDisplay amount={budget.amount} currency={budget.currency} />
               </div>
             ) : (
               <div className="text-gray-400 text-sm">Not set</div>
@@ -842,7 +831,6 @@ export function BudgetManagementPage() {
                               spent={spent}
                               remaining={remaining}
                               percentage={percentage}
-                              totalBudget={Number(categorySummary?.budgeted) || undefined}
                               onEdit={handleEditBudget}
                               onDelete={handleDeleteBudget}
                               onAdd={handleAddNewBudget}
@@ -850,6 +838,67 @@ export function BudgetManagementPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Total Summary (Main Category + Subcategories) */}
+                      {hasSubcategories && categorySummary && (
+                        <div className="ml-6 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-6 h-6 rounded-md bg-gray-400 flex items-center justify-center">
+                                <span className="text-xs text-white font-bold">Σ</span>
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-700">
+                                  Total ({primaryCategory.name} + Subcategories)
+                                </h4>
+                                <div className="flex items-center gap-4 text-xs text-gray-500">
+                                  <span>
+                                    Spent: <CurrencyAmountDisplay 
+                                      amount={Number(categorySummary.total_spent) || 0} 
+                                      currency="EUR" 
+                                    />
+                                  </span>
+                                  <span>
+                                    Remaining: <CurrencyAmountDisplay 
+                                      amount={Number(categorySummary.total_remaining) || 0} 
+                                      currency="EUR" 
+                                    />
+                                  </span>
+                                  <span className={`font-medium ${
+                                    (Number(categorySummary.total_percentage_used) || 0) <= 50 ? 'text-green-600' :
+                                    (Number(categorySummary.total_percentage_used) || 0) <= 80 ? 'text-yellow-600' : 'text-red-600'
+                                  }`}>
+                                    {(Number(categorySummary.total_percentage_used) || 0).toFixed(1)}% used
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500 mb-1">Total Budget</div>
+                              <div className="font-semibold text-gray-900">
+                                <CurrencyAmountDisplay 
+                                  amount={Number(categorySummary.total_budgeted) || 0} 
+                                  currency="EUR" 
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Total Progress Bar */}
+                          <div className="mt-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full transition-all duration-300 ${
+                                  (Number(categorySummary.total_percentage_used) || 0) <= 50 ? 'bg-green-500' :
+                                  (Number(categorySummary.total_percentage_used) || 0) <= 80 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}
+                                style={{ width: `${Math.min(Number(categorySummary.total_percentage_used) || 0, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Subcategories */}
                       {hasSubcategories && isExpanded && (
