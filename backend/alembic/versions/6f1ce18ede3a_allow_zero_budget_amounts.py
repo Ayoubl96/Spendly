@@ -24,8 +24,21 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Update budget constraint to allow zero amounts (>= 0)."""
     
-    # Drop the existing constraint that only allowed positive amounts (> 0)
-    op.drop_constraint('positive_budget_amount', 'budgets', type_='check')
+    # Check if the constraint exists before trying to drop it
+    connection = op.get_bind()
+    result = connection.execute(sa.text("""
+        SELECT constraint_name 
+        FROM information_schema.table_constraints 
+        WHERE table_name = 'budgets' 
+        AND constraint_name = 'positive_budget_amount'
+        AND constraint_type = 'CHECK'
+    """))
+    
+    constraint_exists = result.fetchone() is not None
+    
+    # Drop the existing constraint only if it exists
+    if constraint_exists:
+        op.drop_constraint('positive_budget_amount', 'budgets', type_='check')
     
     # Add new constraint that allows zero and positive amounts (>= 0)
     op.create_check_constraint(
@@ -38,8 +51,21 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Revert budget constraint to only allow positive amounts (> 0)."""
     
-    # Drop the constraint that allows zero amounts
-    op.drop_constraint('positive_budget_amount', 'budgets', type_='check')
+    # Check if the constraint exists before trying to drop it
+    connection = op.get_bind()
+    result = connection.execute(sa.text("""
+        SELECT constraint_name 
+        FROM information_schema.table_constraints 
+        WHERE table_name = 'budgets' 
+        AND constraint_name = 'positive_budget_amount'
+        AND constraint_type = 'CHECK'
+    """))
+    
+    constraint_exists = result.fetchone() is not None
+    
+    # Drop the constraint that allows zero amounts only if it exists
+    if constraint_exists:
+        op.drop_constraint('positive_budget_amount', 'budgets', type_='check')
     
     # Add back the original constraint that only allows positive amounts
     op.create_check_constraint(
