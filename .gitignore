@@ -33,8 +33,9 @@ env.test
 env.local
 env.development
 env.production
-.env-production
 
+.env-production
+.DS_Store
 
 # PyCharm
 .idea/
