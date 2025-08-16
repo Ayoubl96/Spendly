@@ -31,6 +31,9 @@ RUN pip install --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Make scripts executable
+RUN chmod +x scripts/start-production.sh
+
 # Create necessary directories and set permissions
 RUN mkdir -p /app/uploads /app/logs && \
     chown -R appuser:appuser /app
@@ -46,5 +49,5 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Run the application (use PORT environment variable or default to 8000)
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4
+# Run the application with migrations (use our startup script)
+CMD ["./scripts/start-production.sh"]
