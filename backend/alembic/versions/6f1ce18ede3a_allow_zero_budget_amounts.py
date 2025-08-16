@@ -30,7 +30,6 @@ def upgrade() -> None:
         SELECT constraint_name 
         FROM information_schema.table_constraints 
         WHERE table_name = 'budgets' 
-        AND constraint_name = 'positive_budget_amount'
         AND constraint_type = 'CHECK'
     """))
     
@@ -57,7 +56,6 @@ def downgrade() -> None:
         SELECT constraint_name 
         FROM information_schema.table_constraints 
         WHERE table_name = 'budgets' 
-        AND constraint_name = 'positive_budget_amount'
         AND constraint_type = 'CHECK'
     """))
     

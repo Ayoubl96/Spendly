@@ -32,10 +32,27 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         search: Optional[str] = None,
         tags: Optional[List[str]] = None,
         sort_by: str = "expense_date",
-        sort_order: str = "desc"
+        sort_order: str = "desc",
+        include_shared: bool = True
     ) -> List[Expense]:
-        """Get expenses for a user with filtering and sorting"""
-        query = db.query(Expense).filter(Expense.user_id == user_id)
+        """Get expenses for a user with filtering and sorting, including shared expenses"""
+        if include_shared:
+            # Query for both owned expenses and shared expenses
+            # Subquery for expenses where user has shares
+            shared_expense_ids = db.query(ExpenseShare.expense_id).filter(
+                ExpenseShare.user_id == user_id
+            ).subquery()
+            
+            # Main query: expenses owned by user OR expenses shared with user
+            query = db.query(Expense).filter(
+                or_(
+                    Expense.user_id == user_id,  # Expenses created by user
+                    Expense.id.in_(shared_expense_ids)  # Expenses shared with user
+                )
+            )
+        else:
+            # Original behavior: only owned expenses
+            query = db.query(Expense).filter(Expense.user_id == user_id)
         
         # Date filtering
         if start_date:
@@ -121,10 +138,27 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         payment_method: Optional[str] = None,
         payment_method_id: Optional[Any] = None,
         search: Optional[str] = None,
-        tags: Optional[List[str]] = None
+        tags: Optional[List[str]] = None,
+        include_shared: bool = True
     ) -> int:
-        """Count expenses for a user with filtering"""
-        query = db.query(Expense).filter(Expense.user_id == user_id)
+        """Count expenses for a user with filtering, including shared expenses"""
+        if include_shared:
+            # Query for both owned expenses and shared expenses
+            # Subquery for expenses where user has shares
+            shared_expense_ids = db.query(ExpenseShare.expense_id).filter(
+                ExpenseShare.user_id == user_id
+            ).subquery()
+            
+            # Main query: expenses owned by user OR expenses shared with user
+            query = db.query(Expense).filter(
+                or_(
+                    Expense.user_id == user_id,  # Expenses created by user
+                    Expense.id.in_(shared_expense_ids)  # Expenses shared with user
+                )
+            )
+        else:
+            # Original behavior: only owned expenses
+            query = db.query(Expense).filter(Expense.user_id == user_id)
         
         # Apply same filters as get_by_user
         if start_date:
@@ -262,12 +296,13 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         else:
             end_date = date(year, month + 1, 1)
         
-        # Get expenses for the month
+        # Get expenses for the month (including shared expenses)
         expenses = self.get_by_user(
             db, 
             user_id=user_id,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            include_shared=True
         )
         
         # Calculate totals

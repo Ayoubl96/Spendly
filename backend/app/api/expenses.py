@@ -35,8 +35,8 @@ def read_expenses(
     """
     Retrieve user's expenses with filtering and shared expense support
     """
-    # Get user's own expenses
-    own_expenses = expense_crud.get_by_user(
+    # Get user's expenses (including shared expenses if requested)
+    expenses = expense_crud.get_by_user(
         db,
         user_id=current_user.id,
         skip=commons.skip,
@@ -51,12 +51,13 @@ def read_expenses(
         search=commons.search,
         tags=tags,
         sort_by=commons.sort_by or "expense_date",
-        sort_order=commons.sort_order
+        sort_order=commons.sort_order,
+        include_shared=include_shared
     )
     
     # Convert to ExpenseWithDetails and add user share information
     result = []
-    for expense in own_expenses:
+    for expense in expenses:
         expense_dict = {
             "id": str(expense.id),
             "amount": float(expense.amount_decimal),
