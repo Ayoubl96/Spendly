@@ -1,45 +1,49 @@
-import React, { useState } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
-import { useAuthStore } from '../../stores/auth.store'
-import { Button } from '../ui/button'
-import { 
-  LayoutDashboard, 
-  Receipt, 
-  PiggyBank, 
-  Settings, 
-  Menu, 
+import React, { useState } from "react";
+import { Outlet, Link, useLocation } from "react-router-dom";
+import { useAuthStore } from "../../stores/auth.store";
+import { Button } from "../ui/button";
+import {
+  LayoutDashboard,
+  Receipt,
+  PiggyBank,
+  Settings,
+  Menu,
   X,
   LogOut,
   User,
   Tags,
-  CreditCard
-} from 'lucide-react'
-import { cn } from '../../lib/utils'
+  CreditCard,
+} from "lucide-react";
+import { cn } from "../../lib/utils";
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Expenses', href: '/expenses', icon: Receipt },
-  { name: 'Categories', href: '/categories', icon: Tags },
-  { name: 'Payment Methods', href: '/settings/payment-methods', icon: CreditCard },
-  { name: 'Budget', href: '/budget', icon: PiggyBank },
-  { name: 'Settings', href: '/settings', icon: Settings },
-]
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Expenses", href: "/expenses", icon: Receipt },
+  { name: "Categories", href: "/categories", icon: Tags },
+  {
+    name: "Payment Methods",
+    href: "/settings/payment-methods",
+    icon: CreditCard,
+  },
+  { name: "Budget", href: "/budget", icon: PiggyBank },
+  { name: "Settings", href: "/settings", icon: Settings },
+];
 
 export function DashboardLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const location = useLocation()
-  const { user, logout } = useAuthStore()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+  const { user, logout } = useAuthStore();
 
   const handleLogout = () => {
-    logout()
-  }
+    logout();
+  };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 lg:hidden" 
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         >
           <div className="fixed inset-0 bg-black/25" />
@@ -50,21 +54,17 @@ export function DashboardLayout() {
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between h-16 px-6 border-b">
             <Link to="/dashboard" className="flex items-center gap-3">
-              <img 
-                src="/icon-only.svg" 
-                alt="Spendly" 
-                className="w-8 h-8"
-              />
+              <img src="/icon.svg" alt="Spendly" className="w-8 h-8" />
               <span className="text-xl font-bold">Spendly</span>
             </Link>
-            
+
             <Button
               variant="ghost"
               size="icon"
@@ -78,9 +78,9 @@ export function DashboardLayout() {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href
-              const Icon = item.icon
-              
+              const isActive = location.pathname === item.href;
+              const Icon = item.icon;
+
               return (
                 <Link
                   key={item.name}
@@ -89,14 +89,14 @@ export function DashboardLayout() {
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent",
                   )}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <Icon className="h-5 w-5" />
                   {item.name}
                 </Link>
-              )
+              );
             })}
           </nav>
 
@@ -115,7 +115,7 @@ export function DashboardLayout() {
                 </p>
               </div>
             </div>
-            
+
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 mt-2 text-muted-foreground hover:text-foreground"
@@ -140,13 +140,13 @@ export function DashboardLayout() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          
+
           <div className="flex-1">
             <h1 className="text-xl font-semibold capitalize">
-              {location.pathname.split('/')[1] || 'Dashboard'}
+              {location.pathname.split("/")[1] || "Dashboard"}
             </h1>
           </div>
-          
+
           {/* Quick actions could go here */}
         </div>
 
@@ -156,5 +156,5 @@ export function DashboardLayout() {
         </main>
       </div>
     </div>
-  )
+  );
 }
