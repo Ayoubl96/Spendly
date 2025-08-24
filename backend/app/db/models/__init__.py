@@ -10,6 +10,7 @@ from .budget import Budget
 from .budget_group import BudgetGroup
 from .categorization_rule import CategorizationRule
 from .payment_method import UserPaymentMethod
+from .enable_banking import BankConnectionStatus, BankConnection, BankAccount, ImportedTransaction
 
 __all__ = [
     "User", 
@@ -22,5 +23,10 @@ __all__ = [
     "Budget",
     "BudgetGroup",
     "CategorizationRule",
-    "UserPaymentMethod"
+    "UserPaymentMethod",
+    "BankAccount",
+    "ImportedTransaction",
+    "BankConnectionStatus",
+    "BankConnection",
+
 ]

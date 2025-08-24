@@ -104,3 +104,5 @@ backend/uploads/
 .build/
 .xcode.userdata/
 .xcode.userdata/
+
+./backend/venv
