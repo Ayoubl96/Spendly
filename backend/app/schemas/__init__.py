@@ -17,10 +17,10 @@ from .bank_connection import (
     BankAccountData,
     ASPSPData,
     AccessData,
-    BbankConnectionCallbackResponse,
+    BankConnectionCallbackResponse,
     BankConnection,
     BankConnectionCreate,
-    BankConncetionList
+    BankConnectionList
 )
 
 __all__ = [
@@ -32,5 +32,5 @@ __all__ = [
     "BudgetGroup", "BudgetGroupCreate", "BudgetGroupUpdate",
     "PaymentMethod", "PaymentMethodCreate", "PaymentMethodUpdate",
     "Token", "TokenData","BankConnectionAuthInit", "BankConnectionAuthResponse",
-    "BankConnectionCallback", "BankAccountData", "ASPSPData", "AccessData", "BbankConnectionCallbackResponse", "BankConnection", "BankConnectionCreate", "BankConncetionList",
+    "BankConnectionCallback", "BankAccountData", "ASPSPData", "AccessData", "BankConnectionCallbackResponse", "BankConnection", "BankConnectionCreate", "BankConnectionList",
 ]

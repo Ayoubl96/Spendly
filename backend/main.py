@@ -21,6 +21,7 @@ from app.api.currencies import router as currencies_router
 from app.api.analytics import router as analytics_router
 from app.api.expense_import import router as expense_import_router
 from app.api.payment_methods import router as payment_methods_router
+from app.api.bank_connections import router as bank_connections_router
 
 
 @asynccontextmanager
@@ -83,7 +84,7 @@ app.include_router(currencies_router, prefix="/api/v1/currencies", tags=["Curren
 app.include_router(analytics_router, prefix="/api/v1/analytics", tags=["Analytics"])
 app.include_router(expense_import_router, prefix="/api/v1/expense-import", tags=["Expense Import"])
 app.include_router(payment_methods_router, prefix="/api/v1/payment-methods", tags=["Payment Methods"])
-
+app.include_router(bank_connections_router, prefix="/api/v1/bank-connections", tags=["Bank Connections"])
 # Root endpoint
 @app.get("/")
 async def root():
