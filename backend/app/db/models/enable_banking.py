@@ -36,8 +36,8 @@ class BankConnection(Base):
 
     # Enable Banking session data
     session_id = Column(String(255), nullable=False, unique=True, index=True)
-    access_token = Column(Text, nullable=False)
-    refresh_token = Column(Text, nullable=True)
+    access_token = Column(Text, nullable=False) # remove it
+    refresh_token = Column(Text, nullable=True) # remove it
     token_expires_at = Column(DateTime, nullable=True)
 
     # Connection metadata
@@ -252,7 +252,3 @@ class TransactionImportLog(Base):
 
     def __repr__(self) -> str:
         return f"<TransactionImportLog(connection_id='{self.connection_id}', status='{self.status}', imported={self.transactions_imported})>"
-
-
-
-

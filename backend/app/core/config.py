@@ -88,6 +88,17 @@ class Settings(BaseSettings):
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
+
+    #JWT parameters
+    enable_banking_private_key_path: str = "Insert path to private key"
+    enable_banking_application_id: str = "Insert application id"
+    enable_banking_iss: str = "enablebanking.com"
+    enable_banking_aud: str = "api.enablebanking.com"
+    enable_banking_token_expiry_minutes: int = 60
+
+    # API base url
+    enable_banking_base_api_url: str = "https://api.enablebanking.com"
+
     
     @validator("CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v):

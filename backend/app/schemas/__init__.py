@@ -10,14 +10,27 @@ from .budget import Budget, BudgetCreate, BudgetUpdate
 from .budget_group import BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
 from .payment_method import PaymentMethod, PaymentMethodCreate, PaymentMethodUpdate
 from .token import Token, TokenData
+from .bank_connection import (
+    BankConnectionAuthResponse,
+    BankConnectionAuthInit,
+    BankConnectionCallback,
+    BankAccountData,
+    ASPSPData,
+    AccessData,
+    BbankConnectionCallbackResponse,
+    BankConnection,
+    BankConnectionCreate,
+    BankConncetionList
+)
 
 __all__ = [
     "User", "UserCreate", "UserUpdate", "UserInDB",
-    "Category", "CategoryCreate", "CategoryUpdate", 
+    "Category", "CategoryCreate", "CategoryUpdate",
     "Currency", "CurrencyCreate", "CurrencyUpdate",
     "Expense", "ExpenseCreate", "ExpenseUpdate",
     "Budget", "BudgetCreate", "BudgetUpdate",
     "BudgetGroup", "BudgetGroupCreate", "BudgetGroupUpdate",
     "PaymentMethod", "PaymentMethodCreate", "PaymentMethodUpdate",
-    "Token", "TokenData"
+    "Token", "TokenData","BankConnectionAuthInit", "BankConnectionAuthResponse",
+    "BankConnectionCallback", "BankAccountData", "ASPSPData", "AccessData", "BbankConnectionCallbackResponse", "BankConnection", "BankConnectionCreate", "BankConncetionList",
 ]
