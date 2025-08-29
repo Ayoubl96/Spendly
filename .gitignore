@@ -106,3 +106,5 @@ backend/uploads/
 .xcode.userdata/
 
 ./backend/venv
+
+.DS_Store
