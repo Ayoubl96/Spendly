@@ -25,33 +25,51 @@ class BankConnectionAuthResponse(BaseModel):
 class BankConnectionCallback(BaseModel):
     code: str = Field(..., description="Code for the bank connection")
 
-class BankAccountData(BaseModel):
+class AccountId(BaseModel):
+    iban: str
+    other: Optional[str] = None
+
+class AllAccountId(BaseModel):
+    identification: str
+    scheme_name: str
+    issuer: Optional[str] = None
+
+class AccountAuth(BaseModel):
+    account_id: AccountId
+    all_account_ids: List[AllAccountId]
+    account_servicer: Optional[str] = None
+    name: str
+    details: Optional[str] = None
+    usage: str
+    product: Optional[str] = None
+    currency: str
+    psu_status: Optional[str] = None
+    credit_limit: Optional[str] = None
+    debit_limit: Optional[str] = None
+    legal_age: Optional[str] = None
+    postal_address: Optional[str] = None
     uid: str
     identification_hash: str
     identification_hashes: List[str]
+
+class AccountAccess(BaseModel):
+    accounts: Optional[str] = None
+    balances: bool
+    transactions: bool
+    valid_until: datetime
 
 class ASPSPData(BaseModel):
     name: str
     country: str
 
-class AccessData(BaseModel):
-    accounts: Optional[List[str]] = None
-    balances: bool
-    transactions: bool
-    valid_until: datetime
 
 
 class BankConnectionCallbackResponse(BaseModel):
     session_id: str
-    accounts: List[str]
-    accounts_data: List[BankAccountData]
+    accounts: List[AccountAuth]
     aspsp: ASPSPData
+    access: AccountAccess
     psu_type: str
-    psu_id_hash: str
-    access: AccessData
-    created: datetime
-    authorized: datetime
-    closed: Optional[datetime] = None
 
 class BankConnection(BaseModel):
     id: UUID
