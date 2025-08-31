@@ -36,6 +36,7 @@ class BankConnection(Base):
 
     # Enable Banking session data
     session_id = Column(String(255), nullable=False, unique=False, index=True)
+    account_uid = Column(String(255), nullable=False, unique=True, index=True)
     token_expires_at = Column(DateTime, nullable=True)
 
     # Connection metadata

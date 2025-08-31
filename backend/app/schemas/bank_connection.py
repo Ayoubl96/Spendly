@@ -79,6 +79,7 @@ class BankConnection(BaseModel):
     bank_code: str
     country_code: str
     session_id: str
+    account_uid: str
     token_expires_at: datetime
     status: str
     last_sync_at: Optional[datetime] = None
@@ -97,15 +98,13 @@ class BankConnectionList(BaseModel):
     connections: List[BankConnection]
     total: int
 
-class BankConnectionCreate(BaseModel):
-    user_id: UUID
-    bank_name: str
-    bank_code: str
-    country_code: str
-    session_id: str
-    status: str
-    auto_categorize: bool = True
-    created_at: datetime
+class BankConnectionUpdate(BaseModel):
+    session_id: Optional[str]
+    account_uid: Optional[str]
+    token_expires_at: Optional[datetime]
+    status: Optional[str]
+    sync_enabled: Optional[bool] = None
+    auto_categorize: Optional[bool] = True
     updated_at: datetime
 
 class BankSessionParameters(BaseModel):

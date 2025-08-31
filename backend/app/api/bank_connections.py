@@ -73,10 +73,13 @@ async def handle_auth_callback(
             session_id=callback_response.session_id
         )
         processed_connections = []
+        print(callback_response)
         connection_status = get_session.status
         user_id = current_user.id
         for account in callback_response.accounts:
             bank_code = account.account_id.iban
+            print(bank_code)
+            print(account)
             existing_conncetion = get_existing_bank_connection(
                 db,
                 user_id,
@@ -90,7 +93,8 @@ async def handle_auth_callback(
                     user_id,
                     callback_response,
                     connection_status,
-                    bank_code
+                    bank_code,
+                    account.uid
                 )
                 processed_connections.append(new_connection)
         return BankConnectionList(

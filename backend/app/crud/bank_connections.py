@@ -25,7 +25,8 @@ def create_bank_connection(
     user_id: UUID,
     callback_response: BankConnectionCallbackResponse,
     connection_status: str,
-    bank_code: str
+    bank_code: str,
+    account_uid: str,
 ) -> BankConnection:
 
     bank_name: str = callback_response.aspsp.name
@@ -39,6 +40,7 @@ def create_bank_connection(
         bank_code=bank_code,
         country_code=country_code,
         session_id=session_id,
+        account_uid=account_uid,
         token_expires_at=token_expires_at,
         status=connection_status,
     )
@@ -46,3 +48,14 @@ def create_bank_connection(
     db.commit()
     db.refresh(new_connection)
     return new_connection
+
+def update_bank_connection(
+    db: Session,
+    bank_connection_id: UUID,
+    callback_response: BankConnectionCallbackResponse,
+    connection_status: str,
+) -> BankConnection:
+
+    db.commit()
+    db.refresh(bank_connection)
+    return bank_connection
