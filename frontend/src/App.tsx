@@ -1,28 +1,34 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Layout components
-import { AuthLayout } from './components/layouts/AuthLayout'
-import { DashboardLayout } from './components/layouts/DashboardLayout'
+import { AuthLayout } from "./components/layouts/AuthLayout";
+import { DashboardLayout } from "./components/layouts/DashboardLayout";
 
 // Page components
-import { LoginPage } from './pages/auth/LoginPage'
-import { RegisterPage } from './pages/auth/RegisterPage'
-import { DashboardPage } from './pages/dashboard/DashboardPage'
-import { ExpensesPage } from './pages/expenses/ExpensesPage'
-import { ExpenseImportPage } from './pages/expenses/ExpenseImportPage'
-import { CategoriesPage } from './pages/categories/CategoriesPage'
-import { BudgetOverviewPage } from './pages/budget/BudgetOverviewPage'
-import { BudgetManagementPage } from './pages/budget/BudgetManagementPage'
-import { SettingsPage } from './pages/settings/SettingsPage'
-import { PaymentMethodsPage } from './pages/settings/PaymentMethodsPage'
+import { LoginPage } from "./pages/auth/LoginPage";
+import { RegisterPage } from "./pages/auth/RegisterPage";
+import { DashboardPage } from "./pages/dashboard/DashboardPage";
+import { ExpensesPage } from "./pages/expenses/ExpensesPage";
+import { ExpenseImportPage } from "./pages/expenses/ExpenseImportPage";
+import { CategoriesPage } from "./pages/categories/CategoriesPage";
+import { BudgetOverviewPage } from "./pages/budget/BudgetOverviewPage";
+import { BudgetManagementPage } from "./pages/budget/BudgetManagementPage";
+import { SettingsPage } from "./pages/settings/SettingsPage";
+import { PaymentMethodsPage } from "./pages/settings/PaymentMethodsPage";
+import { AccountsPage } from "./pages/accounts/AccountsPage";
 
 // Auth protection
-import { ProtectedRoute } from './components/auth/ProtectedRoute'
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Styles
-import './index.css'
+import "./index.css";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -32,7 +38,7 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
     },
   },
-})
+});
 
 function App() {
   return (
@@ -61,9 +67,16 @@ function App() {
               <Route path="expenses/import" element={<ExpenseImportPage />} />
               <Route path="categories" element={<CategoriesPage />} />
               <Route path="budget" element={<BudgetOverviewPage />} />
-              <Route path="budget/manage/:id" element={<BudgetManagementPage />} />
+              <Route
+                path="budget/manage/:id"
+                element={<BudgetManagementPage />}
+              />
               <Route path="settings" element={<SettingsPage />} />
-              <Route path="settings/payment-methods" element={<PaymentMethodsPage />} />
+              <Route
+                path="settings/payment-methods"
+                element={<PaymentMethodsPage />}
+              />
+              <Route path="accounts" element={<AccountsPage />} />
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>
 
@@ -73,7 +86,7 @@ function App() {
         </div>
       </Router>
     </QueryClientProvider>
-  )
+  );
 }
 
-export default App
+export default App;
