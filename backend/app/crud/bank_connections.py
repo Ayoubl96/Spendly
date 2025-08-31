@@ -14,7 +14,8 @@ def get_existing_bank_connection(
     existing = db.query(BankConnection).filter(
         and_(
             BankConnection.user_id == user_id,
-            BankConnection.bank_code == bank_code
+            BankConnection.bank_code == bank_code,
+            BankConnection.deleted_at == "NULL"
         )
     ).first()
 
@@ -54,7 +55,20 @@ def update_bank_connection(
     bank_connection_id: UUID,
     callback_response: BankConnectionCallbackResponse,
     connection_status: str,
+    account_uid: str,
 ) -> BankConnection:
+
+    session_id: str = callback_response.session_id
+    token_expires_at = callback_response.access.valid_until
+
+    bank_connection = db.query(BankConnection).filter(
+        BankConnection.id == bank_connection_id
+    ).first()
+
+    bank_connection.session_id = session_id
+    bank_connection.token_expires_at = token_expires_at
+    bank_connection.status = connection_status
+    bank_connection.account_uid = account_uid
 
     db.commit()
     db.refresh(bank_connection)

@@ -13,7 +13,7 @@ from app.schemas.bank_connection import (
 )
 from app.schemas.user import User
 from app.services.enable_banking_service import enable_banking_service
-from app.crud.bank_connections import get_existing_bank_connection, create_bank_connection
+from app.crud.bank_connections import get_existing_bank_connection, create_bank_connection, update_bank_connection
 
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,14 @@ async def handle_auth_callback(
                 bank_code
             )
             if existing_conncetion is not None:
-                continue
+                update = update_bank_connection(
+                    db,
+                    existing_conncetion.id,
+                    callback_response,
+                    connection_status,
+                    account.uid
+                )
+                processed_connections.append(update)
             else:
                 new_connection = create_bank_connection(
                     db,
