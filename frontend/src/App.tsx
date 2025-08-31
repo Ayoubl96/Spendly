@@ -23,7 +23,7 @@ import { BudgetManagementPage } from "./pages/budget/BudgetManagementPage";
 import { SettingsPage } from "./pages/settings/SettingsPage";
 import { PaymentMethodsPage } from "./pages/settings/PaymentMethodsPage";
 import { AccountsPage } from "./pages/accounts/AccountsPage";
-
+import { VerifyPage } from "./pages/bank/VerifyPage";
 // Auth protection
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
@@ -52,6 +52,8 @@ function App() {
               <Route path="register" element={<RegisterPage />} />
               <Route index element={<Navigate to="login" replace />} />
             </Route>
+
+            <Route path="/verify" element={<VerifyPage />} />
 
             {/* Protected app routes */}
             <Route

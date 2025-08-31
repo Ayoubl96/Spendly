@@ -25,22 +25,23 @@ class BankConnectionAuthResponse(BaseModel):
 class BankConnectionCallback(BaseModel):
     code: str = Field(..., description="Code for the bank connection")
 
-class AccountId(BaseModel):
-    iban: str
-    other: Optional[str] = None
-
 class AllAccountId(BaseModel):
     identification: str
     scheme_name: str
     issuer: Optional[str] = None
 
+class AccountId(BaseModel):
+    iban: Optional[str] = None
+    other: Optional[AllAccountId] = None
+
+
 class AccountAuth(BaseModel):
-    account_id: AccountId
+    account_id: Optional[AccountId] = None
     all_account_ids: List[AllAccountId]
     account_servicer: Optional[str] = None
     name: str
     details: Optional[str] = None
-    usage: str
+    usage: Optional[str] = None
     product: Optional[str] = None
     currency: str
     psu_status: Optional[str] = None

@@ -15,7 +15,7 @@ def get_existing_bank_connection(
         and_(
             BankConnection.user_id == user_id,
             BankConnection.bank_code == bank_code,
-            BankConnection.deleted_at == "NULL"
+            BankConnection.deleted_at == None
         )
     ).first()
 

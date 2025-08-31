@@ -77,9 +77,12 @@ async def handle_auth_callback(
         connection_status = get_session.status
         user_id = current_user.id
         for account in callback_response.accounts:
-            bank_code = account.account_id.iban
-            print(bank_code)
-            print(account)
+            if account.account_id == None:
+                bank_code = callback_response.aspsp.name + account.currency
+            elif account.account_id.iban == None:
+                bank_code = callback_response.aspsp.name + account.account_id.other.identification
+            else:
+                bank_code = account.account_id.iban
             existing_conncetion = get_existing_bank_connection(
                 db,
                 user_id,

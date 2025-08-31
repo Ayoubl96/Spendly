@@ -654,14 +654,18 @@ export interface BankConnectionList {
 
 export interface BankConnectionInit {
   bank_name: string;
-  bank_code: string;
+  bank_country: string;
   access_type: "personal" | "business";
   validity_hours: number;
-  redirect_uri: string;
+  redirect_url: string;
 }
 
-export default interface BankConnectionAuthInitResponse {
+export interface BankConnectionAuthInitResponse {
   url: string;
   authorization_id: string;
   psu_id_hash: string;
+}
+
+export interface BankConnectionCallBack {
+  code: string;
 }

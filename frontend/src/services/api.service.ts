@@ -41,6 +41,8 @@ import {
   BulkPaymentMethodUpdateRequest,
   BankConnectionList,
   BankConnectionInit,
+  BankConnectionAuthInitResponse,
+  BankConnectionCallBack,
 } from "../types/api.types";
 
 const API_BASE_URL =
@@ -983,7 +985,7 @@ class ApiService {
 
   async createBankConnectionInit(
     data: BankConnectionInit,
-  ): Promise<BankConnectionInit> {
+  ): Promise<BankConnectionAuthInitResponse> {
     const rawBankConnectionInit = await this.request<any>(
       "/bank-connections/auth/init",
       {
@@ -992,6 +994,19 @@ class ApiService {
       },
     );
     return rawBankConnectionInit;
+  }
+
+  async createBankConnectionCallback(
+    data: BankConnectionCallBack,
+  ): Promise<BankConnectionList> {
+    const rawBankConnectionCallback = await this.request<any>(
+      "/bank-connections/callback",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    );
+    return rawBankConnectionCallback;
   }
 }
 

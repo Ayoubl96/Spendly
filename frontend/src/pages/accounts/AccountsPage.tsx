@@ -30,6 +30,15 @@ export function AccountsPage() {
     setShowAddModal(true);
   };
 
+  const refreshBankConnections = async () => {
+    try {
+      const response = await apiService.getBankConnections();
+      setBankConnections(response.connections);
+    } catch (error) {
+      console.error("Failed to refresh bank connections:", error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -67,6 +76,7 @@ export function AccountsPage() {
       <AddBankConnectionModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
+        onSuccess={refreshBankConnections}
       />
     </div>
   );
