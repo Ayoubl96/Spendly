@@ -8,13 +8,16 @@ from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
 
-from app.core.database import Base
+from app.db.base import Base
 
 
 class Currency(Base):
     """Currency model for supported currencies"""
 
     __tablename__ = "currencies"
+    
+    # Override the Base id column since we use code as primary key
+    id = None
 
     # Primary key is the currency code (EUR, USD, etc.)
     code = Column(String(3), primary_key=True, index=True)

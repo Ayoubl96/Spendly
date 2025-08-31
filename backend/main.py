@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager
 import uvicorn
 
 from app.core.config import settings
-from app.core.database import init_db
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.expenses import router as expenses_router
@@ -24,18 +23,6 @@ from app.api.payment_methods import router as payment_methods_router
 from app.api.bank_connections import router as bank_connections_router
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan management"""
-    # Startup
-    print("🚀 Starting Spendly Backend...")
-    await init_db()
-    print("✅ Database initialized")
-    yield
-    # Shutdown
-    print("🛑 Shutting down Spendly Backend...")
-
-
 # Create FastAPI application
 app = FastAPI(
     title="Spendly API",
@@ -43,7 +30,6 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs" if settings.ENABLE_DOCS else None,
     redoc_url="/redoc" if settings.ENABLE_DOCS else None,
-    lifespan=lifespan
 )
 
 # Security Middleware

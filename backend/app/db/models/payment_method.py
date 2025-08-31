@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
 
-from app.core.database import Base
+from app.db.base import Base
 
 
 class UserPaymentMethod(Base):

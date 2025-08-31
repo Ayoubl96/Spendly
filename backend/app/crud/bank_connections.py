@@ -1,0 +1,48 @@
+from sqlalchemy.orm import Session
+from sqlalchemy import and_
+from typing import Optional
+from uuid import UUID
+from app.schemas.bank_connection import BankConnectionCallbackResponse
+from app.db.models.enable_banking import BankConnection
+
+def get_existing_bank_connection(
+    db: Session,
+    user_id: UUID,
+    bank_code: str,
+) -> Optional[BankConnection]:
+
+    existing = db.query(BankConnection).filter(
+        and_(
+            BankConnection.user_id == user_id,
+            BankConnection.bank_code == bank_code
+        )
+    ).first()
+
+    return existing
+
+def create_bank_connection(
+    db: Session,
+    user_id: UUID,
+    callback_response: BankConnectionCallbackResponse,
+    connection_status: str,
+    bank_code: str
+) -> BankConnection:
+
+    bank_name: str = callback_response.aspsp.name
+    country_code: str = callback_response.aspsp.country
+    session_id: str = callback_response.session_id
+    token_expires_at = callback_response.access.valid_until
+
+    new_connection = BankConnection(  # type: ignore
+        user_id=user_id,
+        bank_name=bank_name,
+        bank_code=bank_code,
+        country_code=country_code,
+        session_id=session_id,
+        token_expires_at=token_expires_at,
+        status=connection_status,
+    )
+    db.add(new_connection)
+    db.commit()
+    db.refresh(new_connection)
+    return new_connection

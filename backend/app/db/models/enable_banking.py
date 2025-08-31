@@ -4,7 +4,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Optional
 
-from app.core.database import Base
+from app.db.base import Base
 from sqlalchemy import Column, String, Date, Boolean, ForeignKey, Text, JSON, DateTime, UniqueConstraint, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -35,9 +35,7 @@ class BankConnection(Base):
     country_code = Column(String(2), nullable=False, default="IT")
 
     # Enable Banking session data
-    session_id = Column(String(255), nullable=False, unique=True, index=True)
-    access_token = Column(Text, nullable=False) # remove it
-    refresh_token = Column(Text, nullable=True) # remove it
+    session_id = Column(String(255), nullable=False, unique=False, index=True)
     token_expires_at = Column(DateTime, nullable=True)
 
     # Connection metadata

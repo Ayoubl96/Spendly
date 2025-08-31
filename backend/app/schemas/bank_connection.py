@@ -2,7 +2,7 @@
 Bank Connection Schemas
 '''
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from uuid import UUID
@@ -71,6 +71,7 @@ class BankConnectionCallbackResponse(BaseModel):
     access: AccountAccess
     psu_type: str
 
+
 class BankConnection(BaseModel):
     id: UUID
     user_id: UUID
@@ -78,6 +79,7 @@ class BankConnection(BaseModel):
     bank_code: str
     country_code: str
     session_id: str
+    token_expires_at: datetime
     status: str
     last_sync_at: Optional[datetime] = None
     next_sync_at: Optional[datetime] = None
@@ -91,6 +93,10 @@ class BankConnection(BaseModel):
     class Config:
         from_attributes = True
 
+class BankConnectionList(BaseModel):
+    connections: List[BankConnection]
+    total: int
+
 class BankConnectionCreate(BaseModel):
     user_id: UUID
     bank_name: str
@@ -102,7 +108,22 @@ class BankConnectionCreate(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class BankSessionParameters(BaseModel):
+    session_id: str
 
-class BankConnectionList(BaseModel):
-    connections: List[BankConnection]
-    total: int
+class AccountData(BaseModel):
+    uid: str
+    identification_hash: str
+    identification_hashes: List[str]
+
+class BankSessionResponse(BaseModel):
+    status: str
+    accounts: List[str]
+    accounts_data: List[AccountData]
+    aspsp: ASPSPData
+    psu_type: str
+    psu_id_hash: str
+    access: AccountAccess
+    created: datetime
+    authorized: datetime
+    closed: Optional[datetime] = None
