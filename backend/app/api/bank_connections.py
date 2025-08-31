@@ -13,7 +13,7 @@ from app.schemas.bank_connection import (
 )
 from app.schemas.user import User
 from app.services.enable_banking_service import enable_banking_service
-from app.crud.bank_connections import get_existing_bank_connection, create_bank_connection, update_bank_connection
+from app.crud.bank_connections import get_existing_bank_connection, create_bank_connection, update_bank_connection, get_user_bank_connections
 
 
 logger = logging.getLogger(__name__)
@@ -123,6 +123,23 @@ async def get_bank_session(
             session_id=session_id
         )
         return session_response
+    except Exception as e:
+        logger.error(f"API: Unexpected error: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {e}")
+
+@router.get("/", response_model=BankConnectionList)
+async def get_bank_connection_list_by_user(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+)->BankConnectionList:
+    logger.info(f"API: Calling {get_user_bank_connections}")
+    try:
+        connections = get_user_bank_connections(
+            db=db,
+            user_id=current_user.id
+        )
+        return connections
     except Exception as e:
         logger.error(f"API: Unexpected error: {type(e).__name__}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {e}")

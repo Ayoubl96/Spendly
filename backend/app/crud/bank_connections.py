@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import Optional
 from uuid import UUID
-from app.schemas.bank_connection import BankConnectionCallbackResponse
+from app.schemas.bank_connection import BankConnectionCallbackResponse, BankConnectionList
 from app.db.models.enable_banking import BankConnection
 
 def get_existing_bank_connection(
@@ -20,6 +20,20 @@ def get_existing_bank_connection(
     ).first()
 
     return existing
+
+def get_user_bank_connections(
+    db: Session,
+    user_id: UUID,
+) -> BankConnectionList:
+
+    existing = db.query(BankConnection).filter(
+        and_(
+            BankConnection.user_id == user_id,
+            BankConnection.deleted_at == None
+        )
+    ).all()
+
+    return BankConnectionList(connections=existing, total=len(existing))
 
 def create_bank_connection(
     db: Session,

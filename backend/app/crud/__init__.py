@@ -10,7 +10,7 @@ from .crud_expense import expense_crud
 from .crud_budget import budget_crud
 from .crud_budget_group import budget_group_crud
 from .crud_payment_method import payment_method
-from .bank_connections import get_existing_bank_connection, create_bank_connection, update_bank_connection
+from .bank_connections import get_existing_bank_connection, create_bank_connection, update_bank_connection, get_user_bank_connections
 
 __all__ = [
     "CRUDBase",
@@ -23,5 +23,6 @@ __all__ = [
     "payment_method",
     "get_existing_bank_connection",
     "create_bank_connection",
-    "update_bank_connection"
+    "update_bank_connection",
+    "get_user_bank_connections"
 ]
