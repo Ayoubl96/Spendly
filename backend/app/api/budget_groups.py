@@ -10,14 +10,14 @@ from app.core.dependencies import get_db, get_current_user, CommonQueryParams
 from app.crud.crud_budget_group import budget_group_crud
 from app.crud.crud_budget import budget_crud
 from app.schemas.budget_group import (
-    BudgetGroup, 
-    BudgetGroupCreate, 
-    BudgetGroupUpdate, 
+    BudgetGroup,
+    BudgetGroupCreate,
+    BudgetGroupUpdate,
     BudgetGroupSummary,
     BudgetGroupList,
     BudgetGroupWithBudgets,
     GenerateBudgetsRequest,
-    BulkBudgetsUpdateRequest,
+    BulkBudgetsUpdateRequest
 )
 from app.schemas.budget import Budget
 from app.db.models.user import User
@@ -46,20 +46,42 @@ def read_budget_groups(
         period_type=period_type,
         currency=currency
     )
-    
+    enriched_budget_groups = []
+
+    for bg in budget_groups:
+        total_budgeted = str(bg.total_budgeted_amount)
+        total_spent = str(bg.get_total_spent_amount(db))
+        total_remaining = str(bg.get_remaining_amount(db))
+        overall_percentage = str(bg.get_percentage_used(db))
+        overall_status = bg.get_status(db)
+        budget_count = len([b for b in bg.budgets if b.is_active])  # Use this instead
+        budgets = budget_crud.get_all_budget_summary(db, user_id=current_user.id, budget_group_id=bg.id)
+        print('this is summary', budgets)
+
+        # Add calculated fields to the budget group
+        bg.total_budgeted = total_budgeted
+        bg.total_spent = total_spent
+        bg.total_remaining = total_remaining
+        bg.overall_percentage = overall_percentage
+        bg.overall_status = overall_status
+        bg.budget_count = budget_count
+        bg.budget_summaries = budgets
+
+
+        print('this is summary on bg', bg.budget_summaries)
+        enriched_budget_groups.append(bg)
     # Get summary statistics
-    total_groups = len(budget_groups)
-    active_groups = len([bg for bg in budget_groups if bg.is_active])
+    total_groups = len(enriched_budget_groups)
+    active_groups = len([bg for bg in enriched_budget_groups if bg.is_active])
     current_period_groups = len([
-        bg for bg in budget_groups 
+        bg for bg in enriched_budget_groups
         if bg.is_current_period() and bg.is_active
     ])
-    
     return BudgetGroupList(
-        items=budget_groups,
-        total=total_groups,
-        active_groups=active_groups,
-        current_period_groups=current_period_groups
+            items=enriched_budget_groups,
+            total=total_groups,
+            active_groups=active_groups,
+            current_period_groups=current_period_groups
     )
 
 
@@ -80,16 +102,16 @@ def create_budget_group(
         start_date=budget_group_in.start_date,
         end_date=budget_group_in.end_date
     )
-    
+
     if overlapping:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Budget group overlaps with existing group: {overlapping[0].name}"
         )
-    
+
     budget_group = budget_group_crud.create_for_user(
-        db, 
-        obj_in=budget_group_in, 
+        db,
+        obj_in=budget_group_in,
         user_id=current_user.id
     )
     return budget_group
@@ -104,7 +126,7 @@ def read_current_budget_groups(
     Get budget groups for current period
     """
     budget_groups = budget_group_crud.get_current_period_groups(
-        db, 
+        db,
         user_id=current_user.id
     )
     return budget_groups
@@ -120,7 +142,7 @@ def read_budget_groups_summary(
     Get comprehensive summary of all user's budget groups
     """
     summary = budget_group_crud.get_user_summary(
-        db, 
+        db,
         user_id=current_user.id,
         include_inactive=include_inactive
     )
@@ -157,8 +179,8 @@ def read_budget_group_with_budgets(
     Get budget group with its associated budgets
     """
     budget_group = budget_group_crud.get_with_budgets(
-        db, 
-        budget_group_id=budget_group_id, 
+        db,
+        budget_group_id=budget_group_id,
         user_id=current_user.id
     )
     if not budget_group:
@@ -166,11 +188,11 @@ def read_budget_group_with_budgets(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Budget group not found"
         )
-    
+
     # Convert budgets to dict format for response (match frontend Budget shape)
     budgets_data = []
     print(f"🔍 Budget group has {len(budget_group.budgets)} total budgets")
-    
+
     for budget in budget_group.budgets:
         print(f"🔍 Budget: {budget.name}, Active: {budget.is_active}, Category ID: {budget.category_id}")
         if budget.is_active:
@@ -198,12 +220,12 @@ def read_budget_group_with_budgets(
             print(f"✅ Added budget to response: {budget.name}")
         else:
             print(f"❌ Skipped inactive budget: {budget.name}")
-    
+
     print(f"🔍 Final budgets_data length: {len(budgets_data)}")
-    
+
     # Create the response using BudgetGroupWithBudgets schema
     from app.schemas.budget_group import BudgetGroupWithBudgets
-    
+
     # Build the response data structure
     response_data = {
         "id": budget_group.id,
@@ -219,7 +241,7 @@ def read_budget_group_with_budgets(
         "updated_at": budget_group.updated_at,
         "budgets": budgets_data,
     }
-    
+
     print(f"🔍 Response data before schema: {response_data}")
     return BudgetGroupWithBudgets(**response_data)
 
@@ -283,8 +305,8 @@ def read_budget_group_summary(
     Get comprehensive summary for a budget group
     """
     summary = budget_group_crud.get_budget_group_summary(
-        db, 
-        budget_group_id=budget_group_id, 
+        db,
+        budget_group_id=budget_group_id,
         user_id=current_user.id
     )
     if not summary:
@@ -312,10 +334,10 @@ def read_budget_group_budgets(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Budget group not found"
         )
-    
+
     budgets = budget_crud.get_by_budget_group(
-        db, 
-        user_id=current_user.id, 
+        db,
+        user_id=current_user.id,
         budget_group_id=budget_group_id
     )
     return budgets
@@ -338,12 +360,12 @@ def update_budget_group(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Budget group not found"
         )
-    
+
     # Check for overlapping budget groups if dates are being updated
     if budget_group_in.start_date or budget_group_in.end_date:
         start_date = budget_group_in.start_date or budget_group.start_date
         end_date = budget_group_in.end_date or budget_group.end_date
-        
+
         overlapping = budget_group_crud.get_overlapping_groups(
             db,
             user_id=current_user.id,
@@ -351,16 +373,16 @@ def update_budget_group(
             end_date=end_date,
             exclude_id=budget_group.id
         )
-        
+
         if overlapping:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Budget group would overlap with existing group: {overlapping[0].name}"
             )
-    
+
     budget_group = budget_group_crud.update(
-        db, 
-        db_obj=budget_group, 
+        db,
+        db_obj=budget_group,
         obj_in=budget_group_in
     )
     return budget_group
@@ -377,8 +399,8 @@ def delete_budget_group(
     Delete budget group (deactivate)
     """
     budget_group = budget_group_crud.deactivate(
-        db, 
-        budget_group_id=budget_group_id, 
+        db,
+        budget_group_id=budget_group_id,
         user_id=current_user.id
     )
     if not budget_group:
@@ -386,5 +408,5 @@ def delete_budget_group(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Budget group not found"
         )
-    
+
     return {"message": "Budget group deleted successfully"}

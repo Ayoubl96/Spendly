@@ -101,7 +101,7 @@ def read_budget_performance(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Budget not found"
         )
-    
+
     performance = budget_crud.get_budget_performance(db, budget=budget)
     return performance
 
@@ -123,7 +123,7 @@ def update_budget(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Budget not found"
         )
-    
+
     budget = budget_crud.update(db, db_obj=budget, obj_in=budget_in)
     return budget
 
@@ -144,5 +144,5 @@ def delete_budget(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Budget not found"
         )
-    
+
     return {"message": "Budget deleted successfully"}

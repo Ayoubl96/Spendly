@@ -1,5 +1,5 @@
-import React from 'react';
-import { formatCurrency } from '../../utils/currency';
+import React from "react";
+import { formatCurrency } from "../../utils/currency";
 
 interface CurrencyAmountDisplayProps {
   amount: number | string;
@@ -8,21 +8,19 @@ interface CurrencyAmountDisplayProps {
   showCurrencyCode?: boolean;
 }
 
-export function CurrencyAmountDisplay({ 
-  amount, 
-  currency, 
-  className = '',
-  showCurrencyCode = false 
+export function CurrencyAmountDisplay({
+  amount,
+  currency,
+  className = "",
+  showCurrencyCode = false,
 }: CurrencyAmountDisplayProps) {
   const formattedAmount = formatCurrency(amount, currency);
-  
+
   return (
     <span className={className}>
       {formattedAmount}
-      {showCurrencyCode && currency !== 'USD' && currency !== 'EUR' && (
-        <span className="ml-1 text-xs text-muted-foreground">
-          {currency}
-        </span>
+      {showCurrencyCode && currency !== "USD" && currency !== "EUR" && (
+        <span className="ml-1 text-xs text-muted-foreground">{currency}</span>
       )}
     </span>
   );

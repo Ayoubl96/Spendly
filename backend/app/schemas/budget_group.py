@@ -9,6 +9,8 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
+from app.schemas.budget import BudgetPerformance
+
 
 class PeriodType(str, Enum):
     """Budget group period types"""
@@ -156,26 +158,28 @@ class BudgetGroupInDBBase(BudgetGroupBase):
 
     @model_serializer(mode='wrap')
     def serialize_model(self, handler):
-        data = handler(self)
-        # Convert snake_case fields to camelCase for frontend
-        return {
-            "id": data.get("id"),
-            "name": data.get("name"),
-            "description": data.get("description"),
-            "periodType": data.get("period_type"),
-            "startDate": data.get("start_date"),
-            "endDate": data.get("end_date"),
-            "currency": data.get("currency"),
-            "userId": data.get("user_id"),
-            "isActive": data.get("is_active"),
-            "createdAt": data.get("created_at"),
-            "updatedAt": data.get("updated_at"),
-        }
+      data = handler(self)
+      return {
+          "id": data.get("id"),
+          "name": data.get("name"),
+          "description": data.get("description"),
+          "periodType": data.get("period_type"),
+          "startDate": data.get("start_date"),
+          "endDate": data.get("end_date"),
+          "currency": data.get("currency"),
+          "userId": data.get("user_id"),
+          "isActive": data.get("is_active"),
+          "createdAt": data.get("created_at"),
+          "updatedAt": data.get("updated_at"),
+          "totalBudgeted": data.get("total_budgeted"),
+          "totalSpent": data.get("total_spent"),
+          "totalRemaining": data.get("total_remaining"),
+          "overallPercentage": data.get("overall_percentage"),
+          "overallStatus": data.get("overall_status"),
+          "budgetCount": data.get("budget_count"),
+          "budgets_summary": data.get("budget_summaries"),
+      }
 
-
-class BudgetGroup(BudgetGroupInDBBase):
-    """Schema for budget group response"""
-    pass
 
 
 class CategorySummary(BaseModel):
@@ -197,6 +201,17 @@ class CategorySummary(BaseModel):
         return float(value) if value is not None else None
 
 
+class BudgetGroup(BudgetGroupInDBBase):
+    """Schema for budget group response"""
+    total_budgeted: Optional[str] = None
+    total_spent: Optional[str] = None
+    total_remaining: Optional[str] = None
+    overall_percentage: Optional[str] = None
+    overall_status: Optional[str] = None
+    budget_count: Optional[int] = None
+    budget_summaries: List[BudgetPerformance] = []
+
+
 class BudgetGroupSummary(BaseModel):
     """Schema for comprehensive budget group summary"""
     budget_group: BudgetGroup
@@ -207,6 +222,7 @@ class BudgetGroupSummary(BaseModel):
     status: BudgetGroupStatus
     budget_count: int
     category_summaries: Dict[str, CategorySummary]
+
 
     @field_serializer('total_budgeted', 'total_spent', 'total_remaining', 'percentage_used', when_used='json')
     def serialize_decimal(self, value: Decimal) -> float:
@@ -233,7 +249,6 @@ class BudgetGroupWithBudgets(BudgetGroup):
             "isActive": data.get("is_active"),
             "createdAt": data.get("created_at"),
             "updatedAt": data.get("updated_at"),
-            "budgets": data.get("budgets", []),  # Include budgets field!
         }
 
 

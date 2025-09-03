@@ -48,7 +48,6 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
 
         if currency:
             query = query.filter(self.model.currency == currency)
-
         return query.order_by(desc(self.model.start_date)).offset(skip).limit(limit).all()
 
     def get_current_period_groups(
