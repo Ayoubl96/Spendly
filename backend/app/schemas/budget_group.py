@@ -40,7 +40,7 @@ class CategoryBudgetConfig(BaseModel):
     """Configuration for a specific category's budget"""
     category_id: str
     amount: Decimal
-    
+
     @validator("amount")
     def validate_amount(cls, v: Decimal):
         if v is None or v <= Decimal("0"):
@@ -57,28 +57,28 @@ class BudgetGroupCreate(BudgetGroupBase):
     include_inactive_categories: bool = False
     # Specific category configurations (overrides default_amount for specified categories)
     category_configs: Optional[List[CategoryBudgetConfig]] = []
-    
+
     @validator("name")
     def validate_name(cls, v):
         if not v or len(v.strip()) < 3:
             raise ValueError("Budget group name must be at least 3 characters long")
         return v.strip()
-    
+
     @validator("currency")
     def validate_currency(cls, v):
         if not v or len(v) != 3:
             raise ValueError("Currency must be a valid 3-letter code")
         return v.upper()
-    
+
     @validator("end_date")
     def validate_end_date(cls, v, values):
         if "start_date" in values and v <= values["start_date"]:
             raise ValueError("End date must be after start date")
         return v
-    
+
     @validator("default_amount")
     def validate_default_amount(cls, v: Decimal):
-        if v is None or v <= Decimal("0"):
+        if v is None or v < Decimal("0"):
             raise ValueError("Default amount must be greater than 0")
         return v
 
@@ -92,13 +92,13 @@ class BudgetGroupUpdate(BaseModel):
     end_date: Optional[date] = None
     currency: Optional[str] = None
     is_active: Optional[bool] = None
-    
+
     @validator("name")
     def validate_name(cls, v):
         if v is not None and (not v or len(v.strip()) < 3):
             raise ValueError("Budget group name must be at least 3 characters long")
         return v.strip() if v else v
-    
+
     @validator("currency")
     def validate_currency(cls, v):
         if v is not None and (not v or len(v) != 3):
@@ -111,7 +111,7 @@ class GenerateBudgetsRequest(BaseModel):
     category_scope: Literal["primary", "subcategories", "all"] = "all"
     default_amount: Decimal = Decimal("0.01")
     include_inactive_categories: bool = False
-    
+
     @validator("default_amount")
     def validate_default_amount(cls, v: Decimal):
         if v is None or v <= Decimal("0"):
@@ -124,7 +124,7 @@ class BulkBudgetUpdateItem(BaseModel):
     budget_id: Optional[str] = None
     category_id: Optional[str] = None
     amount: Decimal
-    
+
     @validator("amount")
     def validate_amount(cls, v):
         if v < 0:
@@ -143,15 +143,15 @@ class BudgetGroupInDBBase(BudgetGroupBase):
     user_id: UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    
+
     @field_serializer('id', when_used='json')
     def serialize_id(self, value: UUID) -> str:
         return str(value)
-    
+
     @field_serializer('user_id', when_used='json')
     def serialize_user_id(self, value: UUID) -> str:
         return str(value)
-    
+
     model_config = ConfigDict(from_attributes=True)
 
     @model_serializer(mode='wrap')
@@ -191,7 +191,7 @@ class CategorySummary(BaseModel):
     total_remaining: Optional[Decimal] = None       # Total remaining including subcategories
     total_percentage_used: Optional[Decimal] = None # Total percentage including subcategories
     subcategories: Dict[str, Dict[str, Any]] = {}
-    
+
     @field_serializer('budgeted', 'spent', 'remaining', 'percentage_used', 'total_budgeted', 'total_spent', 'total_remaining', 'total_percentage_used', when_used='json')
     def serialize_decimal(self, value: Optional[Decimal]) -> Optional[float]:
         return float(value) if value is not None else None
@@ -207,7 +207,7 @@ class BudgetGroupSummary(BaseModel):
     status: BudgetGroupStatus
     budget_count: int
     category_summaries: Dict[str, CategorySummary]
-    
+
     @field_serializer('total_budgeted', 'total_spent', 'total_remaining', 'percentage_used', when_used='json')
     def serialize_decimal(self, value: Decimal) -> float:
         return float(value)
@@ -216,7 +216,7 @@ class BudgetGroupSummary(BaseModel):
 class BudgetGroupWithBudgets(BudgetGroup):
     """Budget group with its associated budgets"""
     budgets: List[Dict[str, Any]] = []
-    
+
     @model_serializer(mode='wrap')
     def serialize_model(self, handler):
         data = handler(self)
@@ -263,7 +263,7 @@ class BudgetGroupProgress(BaseModel):
     daily_average: Decimal
     projected_total: Decimal
     is_on_track: bool
-    
+
     @field_serializer('total_spent', 'percentage_used', 'daily_average', 'projected_total', when_used='json')
     def serialize_decimal(self, value: Decimal) -> float:
         return float(value)
@@ -278,7 +278,7 @@ class BudgetGroupAlert(BaseModel):
     total_spent: Decimal
     total_budgeted: Decimal
     remaining_amount: Decimal
-    
+
     @field_serializer('percentage_used', 'total_spent', 'total_budgeted', 'remaining_amount', when_used='json')
     def serialize_decimal(self, value: Decimal) -> float:
         return float(value)

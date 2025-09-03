@@ -14,8 +14,8 @@ from app.db.models.budget_group import BudgetGroup
 from app.db.models.category import Category
 from app.db.models.budget import Budget
 from app.schemas.budget_group import (
-    BudgetGroupCreate, 
-    BudgetGroupUpdate, 
+    BudgetGroupCreate,
+    BudgetGroupUpdate,
     BudgetGroupSummary,
     BudgetGroupStatus,
     CategorySummary,
@@ -25,7 +25,7 @@ from app.schemas.budget_group import (
 
 
 class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate]):
-    
+
     def get_by_user(
         self,
         db: Session,
@@ -39,18 +39,18 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
     ) -> List[BudgetGroup]:
         """Get budget groups for a specific user with filtering"""
         query = db.query(self.model).filter(self.model.user_id == user_id)
-        
+
         if is_active is not None:
             query = query.filter(self.model.is_active == is_active)
-        
+
         if period_type:
             query = query.filter(self.model.period_type == period_type)
-        
+
         if currency:
             query = query.filter(self.model.currency == currency)
-        
+
         return query.order_by(desc(self.model.start_date)).offset(skip).limit(limit).all()
-    
+
     def get_current_period_groups(
         self,
         db: Session,
@@ -61,7 +61,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
         """Get budget groups that are active for the current period"""
         if check_date is None:
             check_date = date.today()
-        
+
         return db.query(self.model).filter(
             and_(
                 self.model.user_id == user_id,
@@ -70,7 +70,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                 self.model.end_date >= check_date
             )
         ).order_by(desc(self.model.start_date)).all()
-    
+
     def get_with_budgets(
         self,
         db: Session,
@@ -87,7 +87,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                 self.model.user_id == user_id
             )
         ).first()
-    
+
     def create_for_user(
         self,
         db: Session,
@@ -108,12 +108,12 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
             "is_active": payload.get("is_active", True),
             "user_id": user_id,
         }
-        
+
         db_obj = self.model(**db_fields)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
-        
+
         # Optionally auto-create budgets for user's categories
         if obj_in.auto_create_budgets:
             self._generate_budgets_for_group(
@@ -126,7 +126,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                 category_configs=obj_in.category_configs or [],
             )
             db.refresh(db_obj)
-        
+
         return db_obj
 
     def _generate_budgets_for_group(
@@ -156,7 +156,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
         # Enforce DB constraint: budget amount must be > 0
         effective_amount = default_amount
         # Safety: should already be validated at schema level, but enforce anyway
-        if effective_amount is None or effective_amount <= Decimal("0"):
+        if effective_amount is None or effective_amount < Decimal("0"):
             raise ValueError("Default amount must be greater than 0")
 
         # Create a map of category configs for quick lookup
@@ -238,7 +238,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
             # Skip invalid amounts (server-side protection)
             if item.amount < 0:
                 continue
-                
+
             budget = None
             if item.budget_id:
                 budget = db.query(Budget).filter(
@@ -259,7 +259,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
             count += 1
         db.commit()
         return count
-    
+
     def get_budget_group_summary(
         self,
         db: Session,
@@ -269,25 +269,25 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
     ) -> Optional[BudgetGroupSummary]:
         """Get comprehensive summary for a budget group"""
         budget_group = self.get_with_budgets(
-            db, 
-            budget_group_id=budget_group_id, 
+            db,
+            budget_group_id=budget_group_id,
             user_id=user_id
         )
-        
+
         if not budget_group:
             return None
-        
+
         # Calculate totals
         total_budgeted = budget_group.total_budgeted_amount
         total_spent = budget_group.get_total_spent_amount(db)
         total_remaining = total_budgeted - total_spent
         percentage_used = budget_group.get_percentage_used(db)
         status = BudgetGroupStatus(budget_group.get_status(db))
-        
+
         # Get category summaries
         category_summaries_raw = budget_group.get_category_summary(db)
         category_summaries = {}
-        
+
         for cat_name, cat_data in category_summaries_raw.items():
             # Convert subcategories dict
             subcategories = {}
@@ -299,11 +299,11 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                     "spent": subcat_data["spent"],
                     "remaining": subcat_data["remaining"],
                     "percentage_used": (
-                        (subcat_data["spent"] / subcat_data["budgeted"] * 100) 
+                        (subcat_data["spent"] / subcat_data["budgeted"] * 100)
                         if subcat_data["budgeted"] > 0 else Decimal("0")
                     )
                 }
-            
+
             category_summaries[cat_name] = CategorySummary(
                 categoryId=str(cat_data["categoryId"]),
                 categoryName=cat_data["categoryName"],
@@ -311,19 +311,19 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                 spent=cat_data["spent"],
                 remaining=cat_data["remaining"],
                 percentage_used=(
-                    (cat_data["spent"] / cat_data["budgeted"] * 100) 
+                    (cat_data["spent"] / cat_data["budgeted"] * 100)
                     if cat_data["budgeted"] > 0 else Decimal("0")
                 ),
                 total_budgeted=cat_data.get("total_budgeted", cat_data["budgeted"]),
                 total_spent=cat_data.get("total_spent", cat_data["spent"]),
                 total_remaining=cat_data.get("total_remaining", cat_data["remaining"]),
                 total_percentage_used=(
-                    (cat_data.get("total_spent", cat_data["spent"]) / cat_data.get("total_budgeted", cat_data["budgeted"]) * 100) 
+                    (cat_data.get("total_spent", cat_data["spent"]) / cat_data.get("total_budgeted", cat_data["budgeted"]) * 100)
                     if cat_data.get("total_budgeted", cat_data["budgeted"]) > 0 else Decimal("0")
                 ),
                 subcategories=subcategories
             )
-        
+
         return BudgetGroupSummary(
             budget_group=budget_group,
             total_budgeted=total_budgeted,
@@ -334,7 +334,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
             budget_count=len([b for b in budget_group.budgets if b.is_active]),
             category_summaries=category_summaries
         )
-    
+
     def get_user_summary(
         self,
         db: Session,
@@ -344,33 +344,33 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
     ) -> Dict[str, Any]:
         """Get summary of all budget groups for a user"""
         query = db.query(self.model).filter(self.model.user_id == user_id)
-        
+
         if not include_inactive:
             query = query.filter(self.model.is_active == True)
-        
+
         budget_groups = query.all()
-        
+
         total_groups = len(budget_groups)
         active_groups = len([bg for bg in budget_groups if bg.is_active])
         current_period_groups = len([
-            bg for bg in budget_groups 
+            bg for bg in budget_groups
             if bg.is_current_period() and bg.is_active
         ])
-        
+
         # Calculate overall totals for current period groups
         total_budgeted = Decimal("0")
         total_spent = Decimal("0")
-        
+
         for budget_group in budget_groups:
             if budget_group.is_current_period() and budget_group.is_active:
                 total_budgeted += budget_group.total_budgeted_amount
                 total_spent += budget_group.get_total_spent_amount(db)
-        
+
         overall_percentage = (
-            (total_spent / total_budgeted * 100) 
+            (total_spent / total_budgeted * 100)
             if total_budgeted > 0 else Decimal("0")
         )
-        
+
         # Determine overall status
         if total_spent > total_budgeted:
             overall_status = "over_budget"
@@ -378,7 +378,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
             overall_status = "warning"
         else:
             overall_status = "on_track"
-        
+
         return {
             "total_groups": total_groups,
             "active_groups": active_groups,
@@ -389,7 +389,7 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
             "overall_percentage": overall_percentage,
             "overall_status": overall_status
         }
-    
+
     def deactivate(
         self,
         db: Session,
@@ -404,14 +404,14 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                 self.model.user_id == user_id
             )
         ).first()
-        
+
         if budget_group:
             budget_group.is_active = False
             db.commit()
             db.refresh(budget_group)
-        
+
         return budget_group
-    
+
     def get_overlapping_groups(
         self,
         db: Session,
@@ -442,10 +442,10 @@ class CRUDBudgetGroup(CRUDBase[BudgetGroup, BudgetGroupCreate, BudgetGroupUpdate
                 )
             )
         )
-        
+
         if exclude_id:
             query = query.filter(self.model.id != exclude_id)
-        
+
         return query.all()
 
 
