@@ -289,7 +289,7 @@ export interface BudgetGroup {
   totalSpent?: string;
   totalRemaining?: string;
   overallPercentage?: number;
-  overallStatus?: "on_track" | "warning" | "over_budget";
+  overallStatus: "on_track" | "warning" | "over_budget";
   budgetCount: number;
   budgets_summary: BudgetPerformance[];
 }

@@ -45,7 +45,7 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
     }
   };
 
-  const getStatusBadge = (status?: string) => {
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "on_track":
         return "bg-green-100 text-green-800";
@@ -79,11 +79,11 @@ const BudgetGroupCard: React.FC<BudgetGroupCardProps> = ({
               Current Period
             </Card>
           )}
-          {budgetSummary && (
+          {budgetGroup && (
             <Card
-              className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(budgetSummary.overall_status)}`}
+              className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(budgetGroup.overallStatus)}`}
             >
-              {budgetSummary.overall_status.replace("_", " ").toUpperCase()}
+              {budgetGroup.overallStatus?.replace("_", " ").toUpperCase() || "UNKNOWN"}
             </Card>
           )}
         </div>
