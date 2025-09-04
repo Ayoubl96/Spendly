@@ -47,7 +47,6 @@ def read_budget_groups(
         currency=currency
     )
     enriched_budget_groups = []
-
     for bg in budget_groups:
         total_budgeted = str(bg.total_budgeted_amount)
         total_spent = str(bg.get_total_spent_amount(db))
@@ -56,7 +55,6 @@ def read_budget_groups(
         overall_status = bg.get_status(db)
         budget_count = len([b for b in bg.budgets if b.is_active])  # Use this instead
         budgets = budget_crud.get_all_budget_summary(db, user_id=current_user.id, budget_group_id=bg.id)
-        print('this is summary', budgets)
 
         # Add calculated fields to the budget group
         bg.total_budgeted = total_budgeted
@@ -68,7 +66,6 @@ def read_budget_groups(
         bg.budget_summaries = budgets
 
 
-        print('this is summary on bg', bg.budget_summaries)
         enriched_budget_groups.append(bg)
     # Get summary statistics
     total_groups = len(enriched_budget_groups)
