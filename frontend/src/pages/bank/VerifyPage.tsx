@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Card,
@@ -21,15 +21,22 @@ export function VerifyPage() {
   const [successData, setSuccessData] = useState<{ connections: number }>({
     connections: 0,
   });
+  const hasCalledCallback = useRef(false);
 
   useEffect(() => {
+    const code = searchParms.get("code");
+
     const handleCallback = async () => {
-      const code = searchParms.get("code");
-      if (!code) {
-        setErrorMessage("Invalid code");
-        setState("error");
+      if (!code || hasCalledCallback.current) {
+        if (!code) {
+          setErrorMessage("Invalid code");
+          setState("error");
+        }
         return;
       }
+
+      hasCalledCallback.current = true;
+
       try {
         const response = await apiService.createBankConnectionCallback({
           code,
@@ -47,8 +54,9 @@ export function VerifyPage() {
         );
       }
     };
+
     handleCallback();
-  }, [searchParms]);
+  }, [searchParms.get("code")]);
 
   const handleGoToAccounts = () => {
     navigate("/accounts");

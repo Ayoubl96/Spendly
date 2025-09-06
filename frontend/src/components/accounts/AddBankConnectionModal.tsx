@@ -82,7 +82,7 @@ export function AddBankConnectionModal({
       bank_country: formData.selectedCountry,
       access_type: formData.access_type,
       validity_hours: formData.validity_hours,
-      redirect_url: `${window.location.origin}/verify`,
+      redirect_url: `https://localhost:3000/verify`,
     };
 
     setIsSubmitting(true);
