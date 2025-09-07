@@ -21,6 +21,7 @@ from .bank_connection import (
     BankConnectionList,
     BankSessionParameters,
     BankSessionResponse,
+    TransactionsResponse
 )
 
 __all__ = [
@@ -33,5 +34,5 @@ __all__ = [
     "PaymentMethod", "PaymentMethodCreate", "PaymentMethodUpdate",
     "Token", "TokenData","BankConnectionAuthInit", "BankConnectionAuthResponse",
     "BankConnectionCallback", "ASPSPData", "BankConnectionCallbackResponse", "BankConnection", "BankConnectionUpdate", "BankConnectionList",
-    "BankSessionParameters", "BankSessionResponse", "BankConnectionList"
+    "BankSessionParameters", "BankSessionResponse", "BankConnectionList", "TransactionsResponse"
 ]

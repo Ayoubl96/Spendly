@@ -3,9 +3,10 @@ Enable Banking Integration
 """
 import httpx
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import HTTPException
-from app.schemas import BankConnectionCallbackResponse, BankSessionResponse
+from datetime import datetime
+from app.schemas import BankConnectionCallbackResponse, BankSessionResponse, TransactionsResponse
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,18 @@ class EnableBankingService:
         except Exception as e:
             logger.error(f"Enable Banking Service: Unexpected error: {type(e).__name__}: {e}")
             raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
+    async def get_transaction(self, account_id: str, date_from: datetime, date_to: datetime) -> TransactionsResponse:
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                full_url = f"{self.base_url}/account/{account_id}/transactions"
+
+                response = await client.get(full_url, params={"date_from": date_from, "date_to": date_to })
+
+                return TransactionsResponse(**response.json())
+        except httpx.ConnectError as e:
+            logger.error(f"Enable Banking Service: Connection error to {self.base_url}: {e}")
+            raise HTTPException(status_code=503, detail=f"Cannot connect to Enable Banking service at {self.base_url}")
 
 # Create global instance
 enable_banking_service = EnableBankingService()

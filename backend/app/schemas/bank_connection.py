@@ -127,3 +127,22 @@ class BankSessionResponse(BaseModel):
     created: datetime
     authorized: datetime
     closed: Optional[datetime] = None
+
+class AmountType(BaseModel):
+    amount: str
+    currency: str
+
+class Transaction(BaseModel):
+    entry_reference: Optional[str] = None,
+    merchant_category_code: Optional[str] = None
+    transaction_amount: AmountType
+    status: str
+    booking_date: Optional[datetime] = None
+    value_date: Optional[datetime] = None
+    transaction_date: Optional[datetime] = None
+    remittance_information: Optional[List] = None
+    credit_debit_indicator: str
+
+class TransactionsResponse(BaseModel):
+    transactions: List[Transaction]
+    continuation_key: Optional[str] = None
