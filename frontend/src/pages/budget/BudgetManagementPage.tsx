@@ -1,52 +1,63 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useBudgetGroupStore } from '../../stores/budget-group.store'
-import { useBudgetStore } from '../../stores/budget.store'
-import { useExpenseStore } from '../../stores/expense.store'
-import { useAuthStore } from '../../stores/auth.store'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
-import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
-import { CurrencyAmountDisplay } from '../../components/ui/currency-amount-display'
-import { 
-  ArrowLeft, 
-  Save, 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  ChevronDown, 
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useBudgetGroupStore } from "../../stores/budget-group.store";
+import { useBudgetStore } from "../../stores/budget.store";
+import { useExpenseStore } from "../../stores/expense.store";
+import { useAuthStore } from "../../stores/auth.store";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { CurrencyAmountDisplay } from "../../components/ui/currency-amount-display";
+import {
+  ArrowLeft,
+  Save,
+  Plus,
+  Edit2,
+  Trash2,
+  ChevronDown,
   ChevronRight,
   Target,
   TrendingUp,
   AlertTriangle,
   Settings,
   Calculator,
-  Loader2
-} from 'lucide-react'
-import { Budget, BudgetGroup, BudgetGroupSummary, Category } from '../../types/api.types'
-import { IconRenderer } from '../../utils/iconRenderer'
+  Loader2,
+} from "lucide-react";
+import {
+  Budget,
+  BudgetGroup,
+  BudgetGroupSummary,
+  Category,
+} from "../../types/api.types";
+import { IconRenderer } from "../../utils/iconRenderer";
 
 interface EditingBudget {
-  budgetId?: string
-  categoryId: string
-  categoryName: string
-  amount: number | string
-  isNew?: boolean
+  budgetId?: string;
+  categoryId: string;
+  categoryName: string;
+  amount: number | string;
+  isNew?: boolean;
 }
 
 interface BudgetItemProps {
-  categoryId: string
-  categoryName: string
-  categoryIcon?: string
-  categoryColor?: string
-  budget?: Budget
-  spent: number
-  remaining: number
-  percentage: number
-  isSubcategory?: boolean
-  onEdit: (editingBudget: EditingBudget) => void
-  onDelete?: (budget: Budget) => void
-  onAdd?: (categoryId: string, categoryName: string) => void
+  categoryId: string;
+  categoryName: string;
+  categoryIcon?: string;
+  categoryColor?: string;
+  budget?: Budget;
+  spent: number;
+  remaining: number;
+  percentage: number;
+  isSubcategory?: boolean;
+  onEdit: (editingBudget: EditingBudget) => void;
+  onDelete?: (budget: Budget) => void;
+  onAdd?: (categoryId: string, categoryName: string) => void;
 }
 
 const BudgetItem: React.FC<BudgetItemProps> = ({
@@ -61,48 +72,68 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
   isSubcategory = false,
   onEdit,
   onDelete,
-  onAdd
+  onAdd,
 }) => {
   const getStatusColor = () => {
-    if (!budget) return 'gray'
-    if (percentage <= 50) return 'green'
-    if (percentage <= 80) return 'yellow'
-    return 'red'
-  }
+    if (!budget) return "gray";
+    if (percentage <= 50) return "green";
+    if (percentage <= 80) return "yellow";
+    return "red";
+  };
 
-  const statusColor = getStatusColor()
+  const statusColor = getStatusColor();
 
   return (
-    <div className={`p-4 border rounded-lg ${isSubcategory ? 'bg-gray-50 ml-6' : 'bg-white'}`}>
+    <div
+      className={`p-4 border rounded-lg ${isSubcategory ? "bg-gray-50 ml-6" : "bg-white"}`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 flex-1">
           {/* Category Icon */}
-          <div 
+          <div
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-medium"
-            style={{ backgroundColor: categoryColor || '#6b7280' }}
+            style={{ backgroundColor: categoryColor || "#6b7280" }}
           >
             {categoryIcon ? (
-              <IconRenderer icon={categoryIcon} size={16} className="text-white" />
+              <IconRenderer
+                icon={categoryIcon}
+                size={16}
+                className="text-white"
+              />
             ) : (
-              <span className="text-sm">{categoryName.charAt(0).toUpperCase()}</span>
+              <span className="text-sm">
+                {categoryName.charAt(0).toUpperCase()}
+              </span>
             )}
           </div>
 
           {/* Category Info */}
           <div className="flex-1">
-            <h3 className={`font-medium ${isSubcategory ? 'text-gray-700' : 'text-gray-900'}`}>
+            <h3
+              className={`font-medium ${isSubcategory ? "text-gray-700" : "text-gray-900"}`}
+            >
               {categoryName}
             </h3>
             <div className="flex items-center gap-4 text-sm text-gray-500">
-              <span>Spent: <CurrencyAmountDisplay amount={spent} currency="EUR" /></span>
+              <span>
+                Spent: <CurrencyAmountDisplay amount={spent} currency="EUR" />
+              </span>
               {budget && (
-                <span>Remaining: <CurrencyAmountDisplay amount={remaining} currency="EUR" /></span>
+                <span>
+                  Remaining:{" "}
+                  <CurrencyAmountDisplay amount={remaining} currency="EUR" />
+                </span>
               )}
               {budget && (
-                <span className={`font-medium ${
-                  statusColor === 'green' ? 'text-green-600' :
-                  statusColor === 'yellow' ? 'text-yellow-600' : 'text-red-600'
-                }`}>
+                <span
+                  className={`font-medium ${
+                    statusColor === "green"
+                      ? "text-green-600"
+                      : statusColor === "yellow"
+                        ? "text-yellow-600"
+                        : "text-red-600"
+                  }`}
+                >
                   {(Number(percentage) || 0).toFixed(1)}% used
                 </span>
               )}
@@ -117,7 +148,10 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
             <div className="text-xs text-gray-500 mb-1">Budget</div>
             {budget ? (
               <div className="font-semibold">
-                <CurrencyAmountDisplay amount={budget.amount} currency={budget.currency} />
+                <CurrencyAmountDisplay
+                  amount={budget.amount}
+                  currency={budget.currency}
+                />
               </div>
             ) : (
               <div className="text-gray-400 text-sm">Not set</div>
@@ -128,10 +162,13 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
           {budget && (
             <div className="w-24">
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
+                <div
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    statusColor === 'green' ? 'bg-green-500' :
-                    statusColor === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'
+                    statusColor === "green"
+                      ? "bg-green-500"
+                      : statusColor === "yellow"
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
                   }`}
                   style={{ width: `${Math.min(percentage, 100)}%` }}
                 />
@@ -146,12 +183,14 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onEdit({
-                    budgetId: budget.id,
-                    categoryId,
-                    categoryName,
-                    amount: budget.amount
-                  })}
+                  onClick={() =>
+                    onEdit({
+                      budgetId: budget.id,
+                      categoryId,
+                      categoryName,
+                      amount: budget.amount,
+                    })
+                  }
                   className="text-blue-600 hover:text-blue-800 h-8 w-8 p-0"
                 >
                   <Edit2 className="w-4 h-4" />
@@ -183,13 +222,13 @@ const BudgetItem: React.FC<BudgetItemProps> = ({
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
 export function BudgetManagementPage() {
-  const { id: budgetGroupId } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { id: budgetGroupId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   // Store hooks
   const {
@@ -200,286 +239,323 @@ export function BudgetManagementPage() {
     bulkUpdateBudgets,
     updateBudgetGroup,
     isLoading: isGroupLoading,
-    error: groupError
-  } = useBudgetGroupStore()
+    error: groupError,
+  } = useBudgetGroupStore();
 
   const {
     createBudget,
     updateBudget,
     deleteBudget,
-    isLoading: isBudgetLoading
-  } = useBudgetStore()
+    isLoading: isBudgetLoading,
+  } = useBudgetStore();
 
-  const {
-    categoryTree,
-    currencies,
-    fetchCategoryTree,
-    fetchCurrencies
-  } = useExpenseStore()
+  const { categoryTree, currencies, fetchCategoryTree, fetchCurrencies } =
+    useExpenseStore();
 
   // Local state
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
-  const [editingBudgets, setEditingBudgets] = useState<Record<string, EditingBudget>>({})
-  const [editingGroupInfo, setEditingGroupInfo] = useState(false)
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [editingBudgets, setEditingBudgets] = useState<
+    Record<string, EditingBudget>
+  >({});
+  const [editingGroupInfo, setEditingGroupInfo] = useState(false);
   const [groupEditValues, setGroupEditValues] = useState({
-    name: '',
-    description: ''
-  })
-  const [isSaving, setIsSaving] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
+    name: "",
+    description: "",
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Initialize data
   useEffect(() => {
     if (budgetGroupId) {
-      getBudgetGroupWithBudgets(budgetGroupId)
-      getBudgetGroupSummary(budgetGroupId)
+      getBudgetGroupWithBudgets(budgetGroupId);
+      getBudgetGroupSummary(budgetGroupId);
     }
-    fetchCategoryTree()
-    fetchCurrencies()
-  }, [budgetGroupId, getBudgetGroupWithBudgets, getBudgetGroupSummary, fetchCategoryTree, fetchCurrencies])
+    fetchCategoryTree();
+    fetchCurrencies();
+  }, [
+    budgetGroupId,
+    getBudgetGroupWithBudgets,
+    getBudgetGroupSummary,
+    fetchCategoryTree,
+    fetchCurrencies,
+  ]);
 
   // Initialize group edit values when data loads
   useEffect(() => {
     if (budgetGroupSummary?.budget_group) {
       setGroupEditValues({
         name: budgetGroupSummary.budget_group.name,
-        description: budgetGroupSummary.budget_group.description || ''
-      })
+        description: budgetGroupSummary.budget_group.description || "",
+      });
     }
-  }, [budgetGroupSummary])
+  }, [budgetGroupSummary]);
 
   // Create budget map for easy lookup (with refresh key to force re-render)
   const budgetMap = React.useMemo(() => {
-    const map = new Map<string, Budget>()
-    
+    const map = new Map<string, Budget>();
+
     if (currentBudgetGroup?.budgets) {
-      console.log('🔄 Creating budget map. Budgets found:', currentBudgetGroup.budgets.length)
-      currentBudgetGroup.budgets.forEach(budget => {
-        console.log(`📊 Budget: "${budget.name}" (${budget.amount} ${budget.currency}) -> Category: ${budget.categoryId}`)
+      console.log(
+        "🔄 Creating budget map. Budgets found:",
+        currentBudgetGroup.budgets.length,
+      );
+      currentBudgetGroup.budgets.forEach((budget) => {
+        console.log(
+          `📊 Budget: "${budget.name}" (${budget.amount} ${budget.currency}) -> Category: ${budget.categoryId}`,
+        );
         if (budget.categoryId) {
-          map.set(budget.categoryId, budget)
+          map.set(budget.categoryId, budget);
         }
-      })
-      console.log('📋 Final budget map size:', map.size)
+      });
+      console.log("📋 Final budget map size:", map.size);
     } else {
-      console.log('❌ No budgets found in currentBudgetGroup')
+      console.log("❌ No budgets found in currentBudgetGroup");
     }
-    
-    return map
-  }, [currentBudgetGroup?.budgets, refreshKey])
+
+    return map;
+  }, [currentBudgetGroup?.budgets, refreshKey]);
 
   // Get category info from tree
-  const getCategoryInfo = useCallback((categoryId: string) => {
-    for (const primaryCategory of categoryTree) {
-      if (primaryCategory.id === categoryId) {
-        return {
-          name: primaryCategory.name,
-          icon: primaryCategory.icon,
-          color: primaryCategory.color,
-          isPrimary: true
-        }
-      }
-      for (const subcategory of primaryCategory.subcategories || []) {
-        if (subcategory.id === categoryId) {
+  const getCategoryInfo = useCallback(
+    (categoryId: string) => {
+      for (const primaryCategory of categoryTree) {
+        if (primaryCategory.id === categoryId) {
           return {
-            name: subcategory.name,
-            icon: subcategory.icon,
-            color: primaryCategory.color, // Use parent color
-            isPrimary: false
+            name: primaryCategory.name,
+            icon: primaryCategory.icon,
+            color: primaryCategory.color,
+            isPrimary: true,
+          };
+        }
+        for (const subcategory of primaryCategory.subcategories || []) {
+          if (subcategory.id === categoryId) {
+            return {
+              name: subcategory.name,
+              icon: subcategory.icon,
+              color: primaryCategory.color, // Use parent color
+              isPrimary: false,
+            };
           }
         }
       }
-    }
-    return null
-  }, [categoryTree])
+      return null;
+    },
+    [categoryTree],
+  );
 
   const toggleCategory = (categoryName: string) => {
-    setExpandedCategories(prev => {
-      const newSet = new Set(prev)
+    setExpandedCategories((prev) => {
+      const newSet = new Set(prev);
       if (newSet.has(categoryName)) {
-        newSet.delete(categoryName)
+        newSet.delete(categoryName);
       } else {
-        newSet.add(categoryName)
+        newSet.add(categoryName);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const handleEditBudget = (editingBudget: EditingBudget) => {
-    setEditingBudgets(prev => ({
+    setEditingBudgets((prev) => ({
       ...prev,
-      [editingBudget.categoryId]: editingBudget
-    }))
-    setHasChanges(true)
-  }
+      [editingBudget.categoryId]: editingBudget,
+    }));
+    setHasChanges(true);
+  };
 
   const handleCancelEdit = (categoryId: string) => {
-    setEditingBudgets(prev => {
-      const newEditing = { ...prev }
-      delete newEditing[categoryId]
-      return newEditing
-    })
-    
-    // Check if we still have changes
-    const remainingEdits = Object.keys(editingBudgets).filter(id => id !== categoryId)
-    setHasChanges(remainingEdits.length > 0 || editingGroupInfo)
-  }
+    setEditingBudgets((prev) => {
+      const newEditing = { ...prev };
+      delete newEditing[categoryId];
+      return newEditing;
+    });
 
-  const handleAmountChange = (categoryId: string, newAmount: number | string) => {
-    setEditingBudgets(prev => ({
+    // Check if we still have changes
+    const remainingEdits = Object.keys(editingBudgets).filter(
+      (id) => id !== categoryId,
+    );
+    setHasChanges(remainingEdits.length > 0 || editingGroupInfo);
+  };
+
+  const handleAmountChange = (
+    categoryId: string,
+    newAmount: number | string,
+  ) => {
+    setEditingBudgets((prev) => ({
       ...prev,
       [categoryId]: {
         ...prev[categoryId],
-        amount: typeof newAmount === 'string' ? newAmount : newAmount
-      }
-    }))
-  }
+        amount: typeof newAmount === "string" ? newAmount : newAmount,
+      },
+    }));
+  };
 
   const handleAmountBlur = (categoryId: string, value: string) => {
-    const numValue = Number(value)
+    const numValue = Number(value);
     // If invalid or negative, default to 0 (zero is now allowed)
-    const validAmount = isNaN(numValue) || numValue < 0 ? 0 : numValue
-    
-    setEditingBudgets(prev => ({
+    const validAmount = isNaN(numValue) || numValue < 0 ? 0 : numValue;
+
+    setEditingBudgets((prev) => ({
       ...prev,
       [categoryId]: {
         ...prev[categoryId],
-        amount: validAmount
-      }
-    }))
-  }
+        amount: validAmount,
+      },
+    }));
+  };
 
   const handleAddNewBudget = (categoryId: string, categoryName: string) => {
-    setEditingBudgets(prev => ({
+    setEditingBudgets((prev) => ({
       ...prev,
       [categoryId]: {
         categoryId,
         categoryName,
         amount: 100, // Default amount
-        isNew: true
-      }
-    }))
-    setHasChanges(true)
-  }
+        isNew: true,
+      },
+    }));
+    setHasChanges(true);
+  };
 
   const handleDeleteBudget = async (budget: Budget) => {
-    if (window.confirm(`Are you sure you want to delete the budget for "${budget.name}"?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete the budget for "${budget.name}"?`,
+      )
+    ) {
       try {
-        await deleteBudget(budget.id)
+        await deleteBudget(budget.id);
         // Refresh data
         if (budgetGroupId) {
-          await getBudgetGroupWithBudgets(budgetGroupId)
-          await getBudgetGroupSummary(budgetGroupId)
+          await getBudgetGroupWithBudgets(budgetGroupId);
+          await getBudgetGroupSummary(budgetGroupId);
         }
       } catch (error) {
-        console.error('Failed to delete budget:', error)
-        alert('Failed to delete budget. Please try again.')
+        console.error("Failed to delete budget:", error);
+        alert("Failed to delete budget. Please try again.");
       }
     }
-  }
+  };
 
   const handleSaveAll = async () => {
-    if (!budgetGroupId || !budgetGroupSummary?.budget_group) return
+    if (!budgetGroupId || !budgetGroupSummary?.budget_group) return;
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
       // 1. Update budget group info if changed
       if (editingGroupInfo) {
         await updateBudgetGroup(budgetGroupId, {
           name: groupEditValues.name,
-          description: groupEditValues.description
-        })
-        setEditingGroupInfo(false)
+          description: groupEditValues.description,
+        });
+        setEditingGroupInfo(false);
       }
 
       // 2. Handle budget updates and creations
-      const editEntries = Object.entries(editingBudgets)
-      
+      const editEntries = Object.entries(editingBudgets);
+
       if (editEntries.length > 0) {
         // Separate new budgets from updates
-        const newBudgets: EditingBudget[] = []
-        const updatedBudgets: EditingBudget[] = []
+        const newBudgets: EditingBudget[] = [];
+        const updatedBudgets: EditingBudget[] = [];
 
         editEntries.forEach(([_, editingBudget]) => {
           if (editingBudget.isNew) {
-            newBudgets.push(editingBudget)
+            newBudgets.push(editingBudget);
           } else {
-            updatedBudgets.push(editingBudget)
+            updatedBudgets.push(editingBudget);
           }
-        })
+        });
 
         // Create new budgets
         for (const newBudget of newBudgets) {
           await createBudget({
             name: `${newBudget.categoryName} Budget`,
-            amount: typeof newBudget.amount === 'string' ? Number(newBudget.amount) || 0 : newBudget.amount,
+            amount:
+              typeof newBudget.amount === "string"
+                ? Number(newBudget.amount) || 0
+                : newBudget.amount,
             currency: budgetGroupSummary.budget_group.currency,
             budgetGroupId: budgetGroupId,
             categoryId: newBudget.categoryId,
-            periodType: budgetGroupSummary.budget_group.periodType as 'monthly' | 'yearly' | 'custom' | 'weekly',
+            periodType: budgetGroupSummary.budget_group.periodType as
+              | "monthly"
+              | "yearly"
+              | "custom"
+              | "weekly",
             startDate: budgetGroupSummary.budget_group.startDate,
-            endDate: budgetGroupSummary.budget_group.endDate
-          })
+            endDate: budgetGroupSummary.budget_group.endDate,
+          });
         }
 
         // Bulk update existing budgets
         if (updatedBudgets.length > 0) {
           await bulkUpdateBudgets(budgetGroupId, {
-            items: updatedBudgets.map(budget => ({
+            items: updatedBudgets.map((budget) => ({
               budget_id: budget.budgetId,
               category_id: budget.categoryId,
-              amount: typeof budget.amount === 'string' ? Number(budget.amount) || 0 : budget.amount
-            }))
-          })
+              amount:
+                typeof budget.amount === "string"
+                  ? Number(budget.amount) || 0
+                  : budget.amount,
+            })),
+          });
         }
       }
 
       // Clear editing state
-      setEditingBudgets({})
-      setHasChanges(false)
+      setEditingBudgets({});
+      setHasChanges(false);
 
       // Refresh data
-      await getBudgetGroupWithBudgets(budgetGroupId)
-      await getBudgetGroupSummary(budgetGroupId)
-      
-      // Force component re-render by incrementing refresh key
-      setRefreshKey(prev => prev + 1)
+      await getBudgetGroupWithBudgets(budgetGroupId);
+      await getBudgetGroupSummary(budgetGroupId);
 
-      alert('All changes saved successfully!')
+      // Force component re-render by incrementing refresh key
+      setRefreshKey((prev) => prev + 1);
+
+      alert("All changes saved successfully!");
     } catch (error) {
-      console.error('Failed to save changes:', error)
-      alert('Failed to save some changes. Please try again.')
+      console.error("Failed to save changes:", error);
+      alert("Failed to save some changes. Please try again.");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleCancelAll = () => {
-    setEditingBudgets({})
-    setEditingGroupInfo(false)
-    setHasChanges(false)
+    setEditingBudgets({});
+    setEditingGroupInfo(false);
+    setHasChanges(false);
     if (budgetGroupSummary?.budget_group) {
       setGroupEditValues({
         name: budgetGroupSummary.budget_group.name,
-        description: budgetGroupSummary.budget_group.description || ''
-      })
+        description: budgetGroupSummary.budget_group.description || "",
+      });
     }
-  }
+  };
 
   if (!budgetGroupId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Budget Group ID Required</h1>
-          <p className="text-gray-600 mb-4">Please select a budget group to manage.</p>
-          <Button onClick={() => navigate('/budget')}>
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">
+            Budget Group ID Required
+          </h1>
+          <p className="text-gray-600 mb-4">
+            Please select a budget group to manage.
+          </p>
+          <Button onClick={() => navigate("/budget")}>
             Go to Budget Overview
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   if (isGroupLoading || !budgetGroupSummary) {
@@ -490,7 +566,7 @@ export function BudgetManagementPage() {
           <p className="text-gray-600">Loading budget group details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (groupError) {
@@ -498,17 +574,19 @@ export function BudgetManagementPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Budget Group</h1>
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">
+            Error Loading Budget Group
+          </h1>
           <p className="text-gray-600 mb-4">{groupError}</p>
-          <Button onClick={() => navigate('/budget')}>
+          <Button onClick={() => navigate("/budget")}>
             Go to Budget Overview
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
-  const { budget_group: budgetGroup } = budgetGroupSummary
+  const { budget_group: budgetGroup } = budgetGroupSummary;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -516,17 +594,24 @@ export function BudgetManagementPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/budget')} className="p-2">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/budget")}
+              className="p-2"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Budget Management</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Budget Management
+              </h1>
               <p className="text-gray-600">
-                Manage budgets for {budgetGroup.name} • {budgetGroup.periodType} period
+                Manage budgets for {budgetGroup.name} • {budgetGroup.periodType}{" "}
+                period
               </p>
             </div>
           </div>
-          
+
           {/* Save/Cancel Actions */}
           {hasChanges && (
             <div className="flex items-center gap-3">
@@ -565,11 +650,13 @@ export function BudgetManagementPage() {
               <div className="flex items-center">
                 <Target className="w-8 h-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Budget</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Budget
+                  </p>
                   <p className="text-2xl font-bold">
-                    <CurrencyAmountDisplay 
-                      amount={budgetGroupSummary.total_budgeted} 
-                      currency={budgetGroup.currency} 
+                    <CurrencyAmountDisplay
+                      amount={budgetGroupSummary.total_budgeted}
+                      currency={budgetGroup.currency}
                     />
                   </p>
                 </div>
@@ -582,11 +669,13 @@ export function BudgetManagementPage() {
               <div className="flex items-center">
                 <TrendingUp className="w-8 h-8 text-green-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Spent</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Spent
+                  </p>
                   <p className="text-2xl font-bold">
-                    <CurrencyAmountDisplay 
-                      amount={budgetGroupSummary.total_spent} 
-                      currency={budgetGroup.currency} 
+                    <CurrencyAmountDisplay
+                      amount={budgetGroupSummary.total_spent}
+                      currency={budgetGroup.currency}
                     />
                   </p>
                 </div>
@@ -601,19 +690,29 @@ export function BudgetManagementPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Progress</p>
                   <div className="flex items-center gap-2">
-                    <p className={`text-2xl font-bold ${
-                      budgetGroupSummary.percentage_used <= 80 ? 'text-green-600' :
-                      budgetGroupSummary.percentage_used <= 100 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
+                    <p
+                      className={`text-2xl font-bold ${
+                        budgetGroupSummary.percentage_used <= 80
+                          ? "text-green-600"
+                          : budgetGroupSummary.percentage_used <= 100
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                      }`}
+                    >
                       {budgetGroupSummary.percentage_used.toFixed(1)}%
                     </p>
                     <div className="w-16 h-2 bg-gray-200 rounded-full">
-                      <div 
+                      <div
                         className={`h-2 rounded-full transition-all duration-300 ${
-                          budgetGroupSummary.percentage_used <= 80 ? 'bg-green-500' :
-                          budgetGroupSummary.percentage_used <= 100 ? 'bg-yellow-500' : 'bg-red-500'
+                          budgetGroupSummary.percentage_used <= 80
+                            ? "bg-green-500"
+                            : budgetGroupSummary.percentage_used <= 100
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
                         }`}
-                        style={{ width: `${Math.min(budgetGroupSummary.percentage_used, 100)}%` }}
+                        style={{
+                          width: `${Math.min(budgetGroupSummary.percentage_used, 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -628,12 +727,16 @@ export function BudgetManagementPage() {
                 <Settings className="w-8 h-8 text-orange-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Remaining</p>
-                  <p className={`text-2xl font-bold ${
-                    budgetGroupSummary.total_remaining >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    <CurrencyAmountDisplay 
-                      amount={budgetGroupSummary.total_remaining} 
-                      currency={budgetGroup.currency} 
+                  <p
+                    className={`text-2xl font-bold ${
+                      budgetGroupSummary.total_remaining >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    <CurrencyAmountDisplay
+                      amount={budgetGroupSummary.total_remaining}
+                      currency={budgetGroup.currency}
                     />
                   </p>
                 </div>
@@ -657,7 +760,7 @@ export function BudgetManagementPage() {
                 className="text-blue-600 hover:text-blue-800"
               >
                 <Edit2 className="w-4 h-4 mr-2" />
-                {editingGroupInfo ? 'Cancel' : 'Edit'}
+                {editingGroupInfo ? "Cancel" : "Edit"}
               </Button>
             </div>
           </CardHeader>
@@ -671,8 +774,11 @@ export function BudgetManagementPage() {
                   <Input
                     value={groupEditValues.name}
                     onChange={(e) => {
-                      setGroupEditValues(prev => ({ ...prev, name: e.target.value }))
-                      setHasChanges(true)
+                      setGroupEditValues((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }));
+                      setHasChanges(true);
                     }}
                     placeholder="Enter budget group name"
                   />
@@ -684,8 +790,11 @@ export function BudgetManagementPage() {
                   <Input
                     value={groupEditValues.description}
                     onChange={(e) => {
-                      setGroupEditValues(prev => ({ ...prev, description: e.target.value }))
-                      setHasChanges(true)
+                      setGroupEditValues((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }));
+                      setHasChanges(true);
                     }}
                     placeholder="Optional description"
                   />
@@ -695,12 +804,18 @@ export function BudgetManagementPage() {
               <div>
                 <h3 className="font-semibold text-lg">{budgetGroup.name}</h3>
                 {budgetGroup.description && (
-                  <p className="text-gray-600 mt-1">{budgetGroup.description}</p>
+                  <p className="text-gray-600 mt-1">
+                    {budgetGroup.description}
+                  </p>
                 )}
                 <div className="flex items-center gap-6 mt-3 text-sm text-gray-500">
                   <span>Period: {budgetGroup.periodType}</span>
-                  <span>From: {new Date(budgetGroup.startDate).toLocaleDateString()}</span>
-                  <span>To: {new Date(budgetGroup.endDate).toLocaleDateString()}</span>
+                  <span>
+                    From: {new Date(budgetGroup.startDate).toLocaleDateString()}
+                  </span>
+                  <span>
+                    To: {new Date(budgetGroup.endDate).toLocaleDateString()}
+                  </span>
                   <span>Currency: {budgetGroup.currency}</span>
                 </div>
               </div>
@@ -716,14 +831,17 @@ export function BudgetManagementPage() {
               Budget Categories
             </CardTitle>
             <CardDescription>
-              Manage budget amounts for each category. Click + to add budgets for categories without them.
+              Manage budget amounts for each category. Click + to add budgets
+              for categories without them.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {categoryTree.length === 0 ? (
               <div className="text-center py-12">
                 <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Budget Categories</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Budget Categories
+                </h3>
                 <p className="text-gray-500">
                   No categories have been set up for this budget group yet.
                 </p>
@@ -731,25 +849,37 @@ export function BudgetManagementPage() {
             ) : (
               <div className="space-y-3">
                 {categoryTree.map((primaryCategory) => {
-                  const categorySummary = budgetGroupSummary.category_summaries[primaryCategory.name]
-                  const hasSubcategories = primaryCategory.subcategories && primaryCategory.subcategories.length > 0
-                  const isExpanded = expandedCategories.has(primaryCategory.name)
-                  
+                  const categorySummary =
+                    budgetGroupSummary.category_summaries[primaryCategory.name];
+                  const hasSubcategories =
+                    primaryCategory.subcategories &&
+                    primaryCategory.subcategories.length > 0;
+                  const isExpanded = expandedCategories.has(
+                    primaryCategory.name,
+                  );
+
                   // Try to find budget by category ID from both the map and category summary
-                  let budget = budgetMap.get(primaryCategory.id)
-                  console.log(`🔍 Looking for budget for category "${primaryCategory.name}" (${primaryCategory.id}):`, budget ? `Found: ${budget.name}` : 'Not found')
-                  
+                  let budget = budgetMap.get(primaryCategory.id);
+                  console.log(
+                    `🔍 Looking for budget for category "${primaryCategory.name}" (${primaryCategory.id}):`,
+                    budget ? `Found: ${budget.name}` : "Not found",
+                  );
+
                   // If no budget found by primary category ID, check if there's one in the summary
                   if (!budget && categorySummary?.categoryId) {
-                    budget = budgetMap.get(categorySummary.categoryId)
-                    console.log(`🔍 Tried categorySummary.categoryId (${categorySummary.categoryId}):`, budget ? `Found: ${budget.name}` : 'Not found')
+                    budget = budgetMap.get(categorySummary.categoryId);
+                    console.log(
+                      `🔍 Tried categorySummary.categoryId (${categorySummary.categoryId}):`,
+                      budget ? `Found: ${budget.name}` : "Not found",
+                    );
                   }
-                  
-                  const editingBudget = editingBudgets[primaryCategory.id]
 
-                  const spent = Number(categorySummary?.spent) || 0
-                  const remaining = Number(categorySummary?.remaining) || 0
-                  const percentage = Number(categorySummary?.percentage_used) || 0
+                  const editingBudget = editingBudgets[primaryCategory.id];
+
+                  const spent = Number(categorySummary?.spent) || 0;
+                  const remaining = Number(categorySummary?.remaining) || 0;
+                  const percentage =
+                    Number(categorySummary?.percentage_used) || 0;
 
                   return (
                     <div key={primaryCategory.id} className="space-y-2">
@@ -770,50 +900,81 @@ export function BudgetManagementPage() {
                             )}
                           </Button>
                         )}
-                        
+
                         <div className="flex-1">
                           {editingBudget ? (
                             <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                  <div 
+                                  <div
                                     className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-medium"
-                                    style={{ backgroundColor: primaryCategory.color || '#6b7280' }}
+                                    style={{
+                                      backgroundColor:
+                                        primaryCategory.color || "#6b7280",
+                                    }}
                                   >
                                     {primaryCategory.icon ? (
-                                      <IconRenderer icon={primaryCategory.icon} size={16} className="text-white" />
+                                      <IconRenderer
+                                        icon={primaryCategory.icon}
+                                        size={16}
+                                        className="text-white"
+                                      />
                                     ) : (
-                                      <span className="text-sm">{primaryCategory.name.charAt(0).toUpperCase()}</span>
+                                      <span className="text-sm">
+                                        {primaryCategory.name
+                                          .charAt(0)
+                                          .toUpperCase()}
+                                      </span>
                                     )}
                                   </div>
                                   <div>
-                                    <h3 className="font-medium text-gray-900">{primaryCategory.name}</h3>
+                                    <h3 className="font-medium text-gray-900">
+                                      {primaryCategory.name}
+                                    </h3>
                                     <div className="text-sm text-gray-500">
-                                      {editingBudget.isNew ? 'Creating new budget' : 'Editing budget amount'}
+                                      {editingBudget.isNew
+                                        ? "Creating new budget"
+                                        : "Editing budget amount"}
                                     </div>
                                   </div>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-3">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-600">Budget Amount:</span>
+                                    <span className="text-sm text-gray-600">
+                                      Budget Amount:
+                                    </span>
                                     <Input
                                       type="number"
                                       value={editingBudget.amount}
-                                      onChange={(e) => handleAmountChange(primaryCategory.id, e.target.value)}
-                                      onBlur={(e) => handleAmountBlur(primaryCategory.id, e.target.value)}
+                                      onChange={(e) =>
+                                        handleAmountChange(
+                                          primaryCategory.id,
+                                          e.target.value,
+                                        )
+                                      }
+                                      onBlur={(e) =>
+                                        handleAmountBlur(
+                                          primaryCategory.id,
+                                          e.target.value,
+                                        )
+                                      }
                                       className="w-32"
                                       min="0"
                                       step="0.01"
                                       autoFocus
                                     />
-                                    <span className="text-sm text-gray-500">{budgetGroup.currency}</span>
+                                    <span className="text-sm text-gray-500">
+                                      {budgetGroup.currency}
+                                    </span>
                                   </div>
-                                  
+
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleCancelEdit(primaryCategory.id)}
+                                    onClick={() =>
+                                      handleCancelEdit(primaryCategory.id)
+                                    }
                                     className="text-gray-600 hover:text-gray-800"
                                   >
                                     Cancel
@@ -845,7 +1006,9 @@ export function BudgetManagementPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="w-6 h-6 rounded-md bg-gray-400 flex items-center justify-center">
-                                <span className="text-xs text-white font-bold">Σ</span>
+                                <span className="text-xs text-white font-bold">
+                                  Σ
+                                </span>
                               </div>
                               <div>
                                 <h4 className="text-sm font-medium text-gray-700">
@@ -853,47 +1016,82 @@ export function BudgetManagementPage() {
                                 </h4>
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
                                   <span>
-                                    Spent: <CurrencyAmountDisplay 
-                                      amount={Number(categorySummary.total_spent) || 0} 
-                                      currency="EUR" 
+                                    Spent:{" "}
+                                    <CurrencyAmountDisplay
+                                      amount={
+                                        Number(categorySummary.total_spent) || 0
+                                      }
+                                      currency="EUR"
                                     />
                                   </span>
                                   <span>
-                                    Remaining: <CurrencyAmountDisplay 
-                                      amount={Number(categorySummary.total_remaining) || 0} 
-                                      currency="EUR" 
+                                    Remaining:{" "}
+                                    <CurrencyAmountDisplay
+                                      amount={
+                                        Number(
+                                          categorySummary.total_remaining,
+                                        ) || 0
+                                      }
+                                      currency="EUR"
                                     />
                                   </span>
-                                  <span className={`font-medium ${
-                                    (Number(categorySummary.total_percentage_used) || 0) <= 50 ? 'text-green-600' :
-                                    (Number(categorySummary.total_percentage_used) || 0) <= 80 ? 'text-yellow-600' : 'text-red-600'
-                                  }`}>
-                                    {(Number(categorySummary.total_percentage_used) || 0).toFixed(1)}% used
+                                  <span
+                                    className={`font-medium ${
+                                      (Number(
+                                        categorySummary.total_percentage_used,
+                                      ) || 0) <= 50
+                                        ? "text-green-600"
+                                        : (Number(
+                                              categorySummary.total_percentage_used,
+                                            ) || 0) <= 80
+                                          ? "text-yellow-600"
+                                          : "text-red-600"
+                                    }`}
+                                  >
+                                    {(
+                                      Number(
+                                        categorySummary.total_percentage_used,
+                                      ) || 0
+                                    ).toFixed(1)}
+                                    % used
                                   </span>
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="text-right">
-                              <div className="text-xs text-gray-500 mb-1">Total Budget</div>
+                              <div className="text-xs text-gray-500 mb-1">
+                                Total Budget
+                              </div>
                               <div className="font-semibold text-gray-900">
-                                <CurrencyAmountDisplay 
-                                  amount={Number(categorySummary.total_budgeted) || 0} 
-                                  currency="EUR" 
+                                <CurrencyAmountDisplay
+                                  amount={
+                                    Number(categorySummary.total_budgeted) || 0
+                                  }
+                                  currency="EUR"
                                 />
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Total Progress Bar */}
                           <div className="mt-2">
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
+                              <div
                                 className={`h-2 rounded-full transition-all duration-300 ${
-                                  (Number(categorySummary.total_percentage_used) || 0) <= 50 ? 'bg-green-500' :
-                                  (Number(categorySummary.total_percentage_used) || 0) <= 80 ? 'bg-yellow-500' : 'bg-red-500'
+                                  (Number(
+                                    categorySummary.total_percentage_used,
+                                  ) || 0) <= 50
+                                    ? "bg-green-500"
+                                    : (Number(
+                                          categorySummary.total_percentage_used,
+                                        ) || 0) <= 80
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
                                 }`}
-                                style={{ width: `${Math.min(Number(categorySummary.total_percentage_used) || 0, 100)}%` }}
+                                style={{
+                                  width: `${Math.min(Number(categorySummary.total_percentage_used) || 0, 100)}%`,
+                                }}
                               />
                             </div>
                           </div>
@@ -904,21 +1102,27 @@ export function BudgetManagementPage() {
                       {hasSubcategories && isExpanded && (
                         <div className="space-y-2">
                           {primaryCategory.subcategories.map((subcategory) => {
-                            const subSummary = categorySummary?.subcategories?.[subcategory.name]
-                            
+                            const subSummary =
+                              categorySummary?.subcategories?.[
+                                subcategory.name
+                              ];
+
                             // Try to find budget by subcategory ID from both the map and summary
-                            let subBudget = budgetMap.get(subcategory.id)
-                            
+                            let subBudget = budgetMap.get(subcategory.id);
+
                             // If no budget found by subcategory ID, check if there's one in the summary
                             if (!subBudget && subSummary?.categoryId) {
-                              subBudget = budgetMap.get(subSummary.categoryId)
+                              subBudget = budgetMap.get(subSummary.categoryId);
                             }
-                            
-                            const editingSubBudget = editingBudgets[subcategory.id]
 
-                            const subSpent = Number(subSummary?.spent) || 0
-                            const subRemaining = Number(subSummary?.remaining) || 0
-                            const subPercentage = Number(subSummary?.percentage_used) || 0
+                            const editingSubBudget =
+                              editingBudgets[subcategory.id];
+
+                            const subSpent = Number(subSummary?.spent) || 0;
+                            const subRemaining =
+                              Number(subSummary?.remaining) || 0;
+                            const subPercentage =
+                              Number(subSummary?.percentage_used) || 0;
 
                             return (
                               <div key={subcategory.id}>
@@ -926,44 +1130,76 @@ export function BudgetManagementPage() {
                                   <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50 ml-6">
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-3">
-                                        <div 
+                                        <div
                                           className="w-6 h-6 rounded-md flex items-center justify-center text-white text-xs font-medium"
-                                          style={{ backgroundColor: primaryCategory.color || '#6b7280' }}
+                                          style={{
+                                            backgroundColor:
+                                              primaryCategory.color ||
+                                              "#6b7280",
+                                          }}
                                         >
                                           {subcategory.icon ? (
-                                            <IconRenderer icon={subcategory.icon} size={12} className="text-white" />
+                                            <IconRenderer
+                                              icon={subcategory.icon}
+                                              size={12}
+                                              className="text-white"
+                                            />
                                           ) : (
-                                            <span>{subcategory.name.charAt(0).toUpperCase()}</span>
+                                            <span>
+                                              {subcategory.name
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                            </span>
                                           )}
                                         </div>
                                         <div>
-                                          <h4 className="font-medium text-gray-700">{subcategory.name}</h4>
+                                          <h4 className="font-medium text-gray-700">
+                                            {subcategory.name}
+                                          </h4>
                                           <div className="text-sm text-gray-500">
-                                            {editingSubBudget.isNew ? 'Creating new budget' : 'Editing budget amount'}
+                                            {editingSubBudget.isNew
+                                              ? "Creating new budget"
+                                              : "Editing budget amount"}
                                           </div>
                                         </div>
                                       </div>
-                                      
+
                                       <div className="flex items-center gap-3">
                                         <div className="flex items-center gap-2">
-                                          <span className="text-sm text-gray-600">Budget Amount:</span>
+                                          <span className="text-sm text-gray-600">
+                                            Budget Amount:
+                                          </span>
                                           <Input
                                             type="number"
                                             value={editingSubBudget.amount}
-                                            onChange={(e) => handleAmountChange(subcategory.id, e.target.value)}
-                                            onBlur={(e) => handleAmountBlur(subcategory.id, e.target.value)}
+                                            onChange={(e) =>
+                                              handleAmountChange(
+                                                subcategory.id,
+                                                e.target.value,
+                                              )
+                                            }
+                                            onBlur={(e) =>
+                                              handleAmountBlur(
+                                                subcategory.id,
+                                                e.target.value,
+                                              )
+                                            }
                                             className="w-32"
                                             min="0"
                                             step="0.01"
                                             autoFocus
                                           />
-                                          <span className="text-sm text-gray-500">{budgetGroup.currency}</span>
+                                          <span className="text-sm text-gray-500">
+                                            {budgetGroup.currency}
+                                          </span>
                                         </div>
-                                        
+
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          onClick={() => handleCancelEdit(subcategory.id)}
+                                          onClick={() =>
+                                            handleCancelEdit(subcategory.id)
+                                          }
                                           className="text-gray-600 hover:text-gray-800"
                                         >
                                           Cancel
@@ -988,12 +1224,12 @@ export function BudgetManagementPage() {
                                   />
                                 )}
                               </div>
-                            )
+                            );
                           })}
                         </div>
                       )}
                     </div>
-                  )
+                  );
                 })}
               </div>
             )}
@@ -1019,5 +1255,5 @@ export function BudgetManagementPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

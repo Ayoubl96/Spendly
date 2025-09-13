@@ -165,7 +165,7 @@ def read_budget_group(
     return budget_group
 
 
-@router.get("/{budget_group_id}/with-budgets", response_model=BudgetGroupWithBudgets)
+@router.get("/{budget_group_id}/with-budgets")
 def read_budget_group_with_budgets(
     *,
     db: Session = Depends(get_db),
@@ -240,7 +240,7 @@ def read_budget_group_with_budgets(
     }
 
     print(f"🔍 Response data before schema: {response_data}")
-    return BudgetGroupWithBudgets(**response_data)
+    return response_data
 
 
 @router.post("/{budget_group_id}/generate-budgets")
