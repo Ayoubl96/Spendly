@@ -127,10 +127,25 @@ class EnableBankingService:
 
                 response = await client.get(full_url, params={"date_from": date_from, "date_to": date_to })
 
+                if response.status_code >= 400:
+                    response_text = response.text
+                    logger.error(f"Enable Banking Service: Error response body: {response_text}")
+
+                response.raise_for_status()
+
                 return TransactionsResponse(**response.json())
         except httpx.ConnectError as e:
             logger.error(f"Enable Banking Service: Connection error to {self.base_url}: {e}")
             raise HTTPException(status_code=503, detail=f"Cannot connect to Enable Banking service at {self.base_url}")
+        except httpx.TimeoutException as e:
+            logger.error(f"Enable Banking Service: Timeout error: {e}")
+            raise HTTPException(status_code=504, detail="Enable Banking service timeout")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Enable Banking Service: HTTP status error {e.response.status_code}: {e.response.text}")
+            raise HTTPException(status_code=e.response.status_code, detail=f"Enable Banking service error: {e.response.text}")
+        except Exception as e:
+            logger.error(f"Enable Banking Service: Unexpected error: {type(e).__name__}: {e}")
+            raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 # Create global instance
 enable_banking_service = EnableBankingService()

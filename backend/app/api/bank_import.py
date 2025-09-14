@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-
+import httpx
 from app.core.dependencies import get_db, get_current_user
 from app.db.models.user import User
 from app.services.bank_transaction_import_service import BankTransactionImportService
@@ -38,7 +38,9 @@ async def test_import_transactions(
         )
 
         return result
-
+    except HTTPException:
+        # Re-raise HTTPException from the service to preserve status codes
+        raise
     except Exception as e:
         logger.error(f"error in test import: {e}")
         raise HTTPException(
