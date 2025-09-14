@@ -1,7 +1,9 @@
-from typing import Any
+from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import logging
+from app.db.models.enable_banking import TransactionImportLog
+from datetime import datetime, date
 
 from app.core.dependencies import get_db, get_current_user
 from app.schemas.bank_connection import (
@@ -142,6 +144,82 @@ async def get_bank_connection_list_by_user(
             user_id=current_user.id
         )
         return connections
+    except Exception as e:
+        logger.error(f"API: Unexpected error: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {e}")
+
+
+@router.get("/import-history", response_model=dict)
+async def get_all_import_history(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    page: int = 1,
+    page_size: int = 20,
+    status: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None
+) -> Any:
+
+    logger.info(f"API: getting import history for user {current_user.id}")
+
+    try:
+        query = db.query(TransactionImportLog).filter(
+            TransactionImportLog.user_id == current_user.id
+        )
+
+        if status:
+            query = query.filter(TransactionImportLog.status == status)
+
+        if date_from:
+            query = query.filter(TransactionImportLog.started_at >= date_from)
+
+        if date_to:
+            date_to_end = datetime.combine(date_to, datetime.max.time())
+            query = query.filter(TransactionImportLog.started_at <= date_to_end)
+
+        total = query.count()
+
+        import_logs = query.order_by(TransactionImportLog.started_at.desc())\
+                    .offset((page - 1) * page_size)\
+                    .limit(page_size)\
+                    .all()
+
+        history_data = []
+
+        for log in import_logs:
+            history_data.append({
+                    "id": str(log.id),
+                    "bank_name": log.bank_connection.bank_name if log.bank_connection else "Unknown",
+                    "status" : log.status,
+                    "started_at": log.started_at.isoformat(),
+                    "completed_at": log.completed_at.isoformat() if log.completed_at else None,
+                    "transactions_fetched": log.transaction_fetched or 0,
+                    "transactions_imported": log.transaction_imported or 0,
+                    "transactions_skipped": log.transaction_skipped or 0,
+                    "expenses_created": log.expenses_created or 0,
+                    "error_message": log.error_message,
+                    "duration_seconds": (
+                        (log.completed_at - log.started_at).total_seconds()
+                        if log.completed_at and log.started_at else None
+                    )
+
+                })
+        return {
+            "data": history_data,
+            "pagination": {
+                "page": page,
+                "pagine_size": page_size,
+                "total": total,
+                "pages": (total + page_size -1) // page_size
+            },
+            "summary": {
+                "total_imports": total,
+                "successful_imports": len([h for h in history_data if h["status"] == "completed"]),
+                "failed_imports": len([h for h in history_data if h["status"] == "failed"]),
+                "total_transacations_imported": sum(h["transactions_imported"] for h in history_data)
+            }
+        }
     except Exception as e:
         logger.error(f"API: Unexpected error: {type(e).__name__}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {e}")
