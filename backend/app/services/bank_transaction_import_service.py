@@ -72,9 +72,11 @@ class BankTransactionImportService:
         user_id: str,
         account_id: str,
         date_from: datetime,
-        date_to:datetime
+        date_to: datetime
     ):
-
+        date_from = date_from.date()
+        date_to = date_to.date()
+        print(f"date from {date_from} date_to {date_to}")
         # Fetch all transacations
         transactions = await self.fetch_transactions_for_account(account_id, date_from, date_to)
 

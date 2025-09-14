@@ -22,7 +22,7 @@ celery_app.conf.update(
 
     beat_schedule={
         "daily-bank-import":{
-            "task": "app.tasks.daily_bank_import.process_daly_bank_imports",
+            "task": "app.tasks.daily_bank_import.process_daily_bank_imports",
             "schedule": crontab(hour=2, minute=0),
         },
     },
@@ -30,7 +30,7 @@ celery_app.conf.update(
     task_track_started=True,
     task_time_limit= 30 * 60,
     task_soft_time_limit=25 * 60,
-    worker_pretech_multipiler=1,
+    worker_prefetch_multiplier=1,
 )
 
 

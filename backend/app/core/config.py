@@ -110,7 +110,7 @@ class Settings(BaseSettings):
     CELERY_ENABLE_UTC: bool = True
 
     # Telegram Configuration
-    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_BOT_TOKEN: Optional[str] = "8388073647:AAGNWTvV-YsfjjUDBpdsdz0NfPeYzNUxVk4"
     TELEGRAM_WEBHOOK_URL: Optional[str] = None
 
     @property

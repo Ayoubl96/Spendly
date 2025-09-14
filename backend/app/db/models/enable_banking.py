@@ -240,8 +240,8 @@ class TransactionImportLog(Base):
 
     transaction_fetched = Column(Integer, nullable=False, default=0)
     transaction_imported = Column(Integer, nullable=False, default=0)
-    transaction_skipped = Column(Integer, nullable=False, default=0)
-    expenses_created = Column(Integer, nullable=False, default=0)
+    transaction_skipped = Column(Integer, nullable=True, default=0)
+    expenses_created = Column(Integer, nullable=True, default=0)
 
     # Error tracking
 
