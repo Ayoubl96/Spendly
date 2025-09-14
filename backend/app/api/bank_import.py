@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/test/{account_id}")
+@router.post("/{account_id}")
 async def test_import_transactions(
     *,
     db: Session = Depends(get_db),
