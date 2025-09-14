@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship
 
 class BankConnectionStatus(str, Enum):
     #Bank connection status mapping
-    ACTIVE = "active"
+    ACTIVE = "AUTHORIZED"
     EXPIRED = "expired"
     REVOKED = "revoked"
     ERROR = "error"
@@ -44,6 +44,8 @@ class BankConnection(Base):
     last_sync_at = Column(DateTime, nullable=True)
     next_sync_at = Column(DateTime, nullable=True)
     sync_enabled = Column(Boolean, nullable=False, default=True)
+    telegram_notification = Column(Boolean, default=True, nullable=True)
+    telegram_chat_id = Column(String, nullable=True)
 
     # Error tracking
     last_error = Column(Text, nullable=True)

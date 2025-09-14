@@ -54,6 +54,53 @@ services:
       - spendly-dev
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
+    # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: spendly-celery-worker-dev
+    volumes:
+      - ./backend:/app
+      - ./data/uploads:/app/uploads
+      - ./data/logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - database
+    networks:
+      - spendly-dev
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+
+    # Celery Beat Scheduler
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: spendly-celery-beat-dev
+    volumes:
+      - ./backend:/app
+      - ./data/uploads:/app/uploads
+      - ./data/logs:/app/logs
+    env_file:
+      - .env
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - database
+      - celery-worker
+    networks:
+      - spendly-dev
+    command: celery -A app.core.celery_app beat --loglevel=info
+
   # PostgreSQL Database
   database:
     image: postgres:15-alpine
@@ -75,8 +122,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-
 
   # Mailhog for email testing
   mailhog:

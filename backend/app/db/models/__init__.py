@@ -11,14 +11,15 @@ from .budget_group import BudgetGroup
 from .categorization_rule import CategorizationRule
 from .payment_method import UserPaymentMethod
 from .enable_banking import BankConnectionStatus, BankConnection, BankAccount, ImportedTransaction
+from .telegram import TelegramConfig
 
 __all__ = [
-    "User", 
-    "Category", 
-    "Currency", 
+    "User",
+    "Category",
+    "Currency",
     "ExchangeRate",
-    "Expense", 
-    "ExpenseAttachment", 
+    "Expense",
+    "ExpenseAttachment",
     "SharedExpense",
     "Budget",
     "BudgetGroup",
@@ -28,5 +29,6 @@ __all__ = [
     "ImportedTransaction",
     "BankConnectionStatus",
     "BankConnection",
+    "TelegramConfig"
 
 ]

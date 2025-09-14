@@ -100,6 +100,31 @@ class Settings(BaseSettings):
     enable_banking_base_api_url: str = "https://api.enablebanking.com"
 
 
+    # Celery Configuration
+    CELERY_BROKER_URL: Optional[str] = None
+    CELERY_RESULT_BACKEND: Optional[str] = None
+    CELERY_TASK_SERIALIZER: str = 'json'
+    CELERY_RESULT_SERIALIZER: str = 'json'
+    CELERY_ACCEPT_CONTENT: List[str] = Field(default=["json"])
+    CELERY_TIMEZONE: str = "UTC"
+    CELERY_ENABLE_UTC: bool = True
+
+    # Telegram Configuration
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_WEBHOOK_URL: Optional[str] = None
+
+    @property
+    def CELERY_BROKER_DATABASE_URL(self) -> str:
+        """Use PostgreSQL as Celery broker"""
+        return self.CELERY_BROKER_URL or f"sqla+{self.DATABASE_URL}"
+
+    @property
+    def CELERY_RESULT_DATABASE_URL(self) -> str:
+        """Use PostgreSQL as Celery result backend"""
+        return self.CELERY_RESULT_BACKEND or f"db+{self.DATABASE_URL}"
+
+
+
     @validator("CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v):
         if isinstance(v, str):
