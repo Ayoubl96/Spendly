@@ -28,7 +28,7 @@ async def seed_currencies(db: Session):
             "is_active": True
         },
         {
-            "code": "USD", 
+            "code": "USD",
             "name": "US Dollar",
             "symbol": "$",
             "decimal_places": 2,
@@ -36,20 +36,19 @@ async def seed_currencies(db: Session):
         },
         {
             "code": "MAD",
-            "name": "Moroccan Dirham", 
+            "name": "Moroccan Dirham",
             "symbol": "MAD",
             "decimal_places": 2,
             "is_active": True
         }
     ]
-    
+
     for currency_data in currencies_data:
         # Check if currency already exists
         existing = currency_crud.get_by_code(db, code=currency_data["code"])
         if not existing:
             currency_obj = CurrencyCreate(**currency_data)
             currency_crud.create(db, obj_in=currency_obj)
-            print(f"✅ Seeded currency: {currency_data['name']} ({currency_data['code']})")
         else:
             print(f"ℹ️  Currency already exists: {currency_data['name']} ({currency_data['code']})")
 
@@ -100,12 +99,12 @@ def seed_default_categories(db: Session, user_id: str):
             "sort_order": 7
         }
     ]
-    
+
     for category_data in default_categories:
         # Check if category already exists for this user
         existing = category_crud.get_by_name(
-            db, 
-            user_id=user_id, 
+            db,
+            user_id=user_id,
             name=category_data["name"]
         )
         if not existing:
@@ -120,7 +119,7 @@ def seed_default_payment_methods(db: Session, user_id: str):
     """Seed default payment methods for a new user"""
     # Check if user already has payment methods
     existing_methods = payment_method.get_by_user(db, user_id=user_id)
-    
+
     if not existing_methods:
         created_methods = payment_method.create_default_payment_methods(
             db, user_id=user_id

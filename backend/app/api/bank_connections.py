@@ -73,7 +73,6 @@ async def handle_auth_callback(
             session_id=callback_response.session_id
         )
         processed_connections = []
-        print(callback_response)
         connection_status = get_session.status
         user_id = current_user.id
         for account in callback_response.accounts:

@@ -14,11 +14,11 @@ from app.schemas.expense import ExpenseCreate, ExpenseUpdate, ExpenseShareCreate
 
 class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
     """CRUD operations for Expense"""
-    
+
     def get_by_user(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         user_id: Any,
         skip: int = 0,
         limit: int = 9000,
@@ -42,7 +42,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             shared_expense_ids = db.query(ExpenseShare.expense_id).filter(
                 ExpenseShare.user_id == user_id
             ).subquery()
-            
+
             # Main query: expenses owned by user OR expenses shared with user
             query = db.query(Expense).filter(
                 or_(
@@ -53,13 +53,13 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         else:
             # Original behavior: only owned expenses
             query = db.query(Expense).filter(Expense.user_id == user_id)
-        
+
         # Date filtering
         if start_date:
             query = query.filter(Expense.expense_date >= start_date)
         if end_date:
             query = query.filter(Expense.expense_date <= end_date)
-        
+
         # Category filtering
         if category_id and subcategory_id:
             # Both primary category and subcategory specified
@@ -80,11 +80,11 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         elif subcategory_id:
             # Only subcategory specified
             query = query.filter(Expense.subcategory_id == subcategory_id)
-        
+
         # Currency filtering
         if currency:
             query = query.filter(Expense.currency == currency)
-        
+
         # Payment method filtering
         if payment_method_id:
             # Filter by new user payment method ID
@@ -92,7 +92,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         elif payment_method:
             # Filter by legacy payment method string
             query = query.filter(Expense.payment_method == payment_method)
-        
+
         # Search filtering
         if search:
             search_pattern = f"%{search}%"
@@ -104,7 +104,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                     Expense.notes.ilike(search_pattern)
                 )
             )
-        
+
         # Tag filtering
         if tags:
             # Filter expenses that contain all specified tags
@@ -116,16 +116,16 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                         func.cast(Expense.tags, Text).like(f'%"{tag}"%')
                     )
                 )
-        
+
         # Sorting
         sort_column = getattr(Expense, sort_by, Expense.expense_date)
         if sort_order.lower() == "asc":
             query = query.order_by(asc(sort_column))
         else:
             query = query.order_by(desc(sort_column))
-        
+
         return query.offset(skip).limit(limit).all()
-    
+
     def count_by_user(
         self,
         db: Session,
@@ -148,7 +148,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             shared_expense_ids = db.query(ExpenseShare.expense_id).filter(
                 ExpenseShare.user_id == user_id
             ).subquery()
-            
+
             # Main query: expenses owned by user OR expenses shared with user
             query = db.query(Expense).filter(
                 or_(
@@ -159,7 +159,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         else:
             # Original behavior: only owned expenses
             query = db.query(Expense).filter(Expense.user_id == user_id)
-        
+
         # Apply same filters as get_by_user
         if start_date:
             query = query.filter(Expense.expense_date >= start_date)
@@ -174,13 +174,13 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             )
         if currency:
             query = query.filter(Expense.currency == currency)
-        
+
         # Payment method filtering
         if payment_method_id:
             query = query.filter(Expense.payment_method_id == payment_method_id)
         elif payment_method:
             query = query.filter(Expense.payment_method == payment_method)
-        
+
         if search:
             search_pattern = f"%{search}%"
             query = query.filter(
@@ -191,7 +191,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                     Expense.notes.ilike(search_pattern)
                 )
             )
-        
+
         # Tag filtering
         if tags:
             # Filter expenses that contain all specified tags
@@ -203,19 +203,19 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                         func.cast(Expense.tags, Text).like(f'%"{tag}"%')
                     )
                 )
-        
+
         return query.count()
-    
+
     def create_for_user(
-        self, 
-        db: Session, 
-        *, 
-        obj_in: ExpenseCreate, 
+        self,
+        db: Session,
+        *,
+        obj_in: ExpenseCreate,
         user_id: Any
     ) -> Expense:
         """Create a new expense for a user with shared expense support"""
         from decimal import Decimal
-        
+
         db_obj = Expense(
             amount=str(obj_in.amount),
             currency=obj_in.currency,
@@ -238,13 +238,13 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
-        
+
         # Handle shared expense configuration
         if obj_in.is_shared and obj_in.shared_expense_config:
-            
+
             total_amount = Decimal(obj_in.amount_in_base_currency or obj_in.amount)
             participants = obj_in.shared_expense_config.participants
-            
+
             # Process share configuration
             if obj_in.shared_expense_config.auto_calculate:
                 # Auto-calculate equal shares if requested
@@ -253,14 +253,14 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                     if participant.share_type == "equal":
                         participant.share_percentage = equal_percentage
                         participant.share_amount = (total_amount * equal_percentage / Decimal("100"))
-            
+
             # Create expense shares
             for participant in participants:
                 share_amount = participant.share_amount
                 if not share_amount:
                     # Calculate based on percentage if amount not provided
                     share_amount = (total_amount * participant.share_percentage / Decimal("100"))
-                
+
                 # Create expense share directly to avoid circular import
                 expense_share = ExpenseShare(
                     expense_id=db_obj.id,
@@ -272,21 +272,20 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                     custom_amount=str(participant.custom_amount) if participant.custom_amount else None
                 )
                 db.add(expense_share)
-            
+
             # Commit the expense shares
             db.commit()
-            
+
             # Refresh the expense object to load the relationships
             db.refresh(db_obj)
-        
         return db_obj
-    
+
     def get_monthly_summary(
-        self, 
-        db: Session, 
-        *, 
-        user_id: Any, 
-        year: int, 
+        self,
+        db: Session,
+        *,
+        user_id: Any,
+        year: int,
         month: int
     ) -> Dict[str, Any]:
         """Get monthly expense summary for a user"""
@@ -295,20 +294,20 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             end_date = date(year + 1, 1, 1)
         else:
             end_date = date(year, month + 1, 1)
-        
+
         # Get expenses for the month (including shared expenses)
         expenses = self.get_by_user(
-            db, 
+            db,
             user_id=user_id,
             start_date=start_date,
             end_date=end_date,
             include_shared=True
         )
-        
+
         # Calculate totals
         total_amount = sum(expense.amount_in_base_currency_decimal for expense in expenses)
         total_count = len(expenses)
-        
+
         # Group by category
         category_totals = {}
         for expense in expenses:
@@ -322,7 +321,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                     }
                 category_totals[cat_name]["amount"] += expense.amount_in_base_currency_decimal
                 category_totals[cat_name]["count"] += 1
-        
+
         return {
             "year": year,
             "month": month,
@@ -331,18 +330,18 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
             "category_breakdown": category_totals,
             "expenses": expenses
         }
-    
+
     def get_yearly_summary(
-        self, 
-        db: Session, 
-        *, 
-        user_id: Any, 
+        self,
+        db: Session,
+        *,
+        user_id: Any,
         year: int
     ) -> Dict[str, Any]:
         """Get yearly expense summary for a user"""
         start_date = date(year, 1, 1)
         end_date = date(year + 1, 1, 1)
-        
+
         # Get monthly totals
         monthly_totals = []
         for month in range(1, 13):
@@ -352,41 +351,41 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
                 "total_amount": monthly_summary["total_amount"],
                 "total_count": monthly_summary["total_count"]
             })
-        
+
         # Calculate yearly totals
         yearly_total = sum(month["total_amount"] for month in monthly_totals)
         yearly_count = sum(month["total_count"] for month in monthly_totals)
-        
+
         return {
             "year": year,
             "total_amount": yearly_total,
             "total_count": yearly_count,
             "monthly_breakdown": monthly_totals
         }
-    
+
     def get_by_category(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         category_id: Any
     ) -> List[Expense]:
         """Get expenses that use this category as primary category"""
         return db.query(Expense).filter(Expense.category_id == category_id).all()
-    
+
     def get_by_subcategory(
-        self, 
-        db: Session, 
-        *, 
+        self,
+        db: Session,
+        *,
         subcategory_id: Any
     ) -> List[Expense]:
         """Get expenses that use this category as subcategory"""
         return db.query(Expense).filter(Expense.subcategory_id == subcategory_id).all()
-    
+
     def get_by_category_or_subcategory(
-        self, 
-        db: Session, 
-        *, 
-        user_id: Any, 
+        self,
+        db: Session,
+        *,
+        user_id: Any,
         category_id: Any,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None
@@ -403,7 +402,7 @@ class CRUDExpense(CRUDBase[Expense, ExpenseCreate, ExpenseUpdate]):
 
 class CRUDExpenseAttachment(CRUDBase[ExpenseAttachment, dict, dict]):
     """CRUD operations for ExpenseAttachment"""
-    
+
     def create_attachment(
         self,
         db: Session,
@@ -428,7 +427,7 @@ class CRUDExpenseAttachment(CRUDBase[ExpenseAttachment, dict, dict]):
         db.commit()
         db.refresh(db_obj)
         return db_obj
-    
+
     def get_by_expense(self, db: Session, *, expense_id: Any) -> List[ExpenseAttachment]:
         """Get all attachments for an expense"""
         return (
@@ -440,7 +439,7 @@ class CRUDExpenseAttachment(CRUDBase[ExpenseAttachment, dict, dict]):
 
 class CRUDExpenseShare(CRUDBase[ExpenseShare, ExpenseShareCreate, dict]):
     """CRUD operations for ExpenseShare"""
-    
+
     def create_share(
         self,
         db: Session,
@@ -467,7 +466,7 @@ class CRUDExpenseShare(CRUDBase[ExpenseShare, ExpenseShareCreate, dict]):
         db.commit()
         db.refresh(db_obj)
         return db_obj
-    
+
     def get_by_expense(self, db: Session, *, expense_id: Any) -> List[ExpenseShare]:
         """Get all shares for an expense"""
         return (
@@ -475,7 +474,7 @@ class CRUDExpenseShare(CRUDBase[ExpenseShare, ExpenseShareCreate, dict]):
             .filter(ExpenseShare.expense_id == expense_id)
             .all()
         )
-    
+
     def get_by_user_and_expense(self, db: Session, *, user_id: Any, expense_id: Any) -> Optional[ExpenseShare]:
         """Get a specific user's share for an expense"""
         return (
@@ -483,7 +482,7 @@ class CRUDExpenseShare(CRUDBase[ExpenseShare, ExpenseShareCreate, dict]):
             .filter(ExpenseShare.user_id == user_id, ExpenseShare.expense_id == expense_id)
             .first()
         )
-    
+
     def delete_by_expense(self, db: Session, *, expense_id: Any) -> int:
         """Delete all shares for an expense"""
         deleted_count = (
@@ -493,18 +492,18 @@ class CRUDExpenseShare(CRUDBase[ExpenseShare, ExpenseShareCreate, dict]):
         )
         db.commit()
         return deleted_count
-    
+
     def update_shares_for_expense(
-        self, 
-        db: Session, 
-        *, 
-        expense_id: Any, 
+        self,
+        db: Session,
+        *,
+        expense_id: Any,
         shares: List[ExpenseShareCreate]
     ) -> List[ExpenseShare]:
         """Update all shares for an expense (replace existing)"""
         # Delete existing shares
         self.delete_by_expense(db, expense_id=expense_id)
-        
+
         # Create new shares
         created_shares = []
         for share_data in shares:
@@ -519,11 +518,11 @@ class CRUDExpenseShare(CRUDBase[ExpenseShare, ExpenseShareCreate, dict]):
             )
             db.add(db_obj)
             created_shares.append(db_obj)
-        
+
         db.commit()
         for share in created_shares:
             db.refresh(share)
-        
+
         return created_shares
 
 

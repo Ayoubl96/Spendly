@@ -9,6 +9,7 @@ from app.schemas.bank_connection import Transaction
 from app.schemas.expense import ExpenseCreate
 from app.crud.crud_expense import expense_crud
 from decimal import Decimal
+from app.db.models.expense import Expense
 
 class BankTransactionImportService:
     def __init__(self, db: Session):
@@ -42,15 +43,26 @@ class BankTransactionImportService:
             transaction_amount = transaction.transaction_amount.amount
             if transaction.credit_debit_indicator != "DBIT" and transaction.status != "BOOK":
                 continue
-
+            # Extract vendor from details
+            description = self._extract_description(transaction.remittance_information)
+            vendor = self.expense_import_service._extract_vendor_italian_bank(
+                str(description) if description else "",
+                ""  # operation_type parameter (empty since we don't have it from bank API)
+            )
+            description_normalized = (description or '').lower().strip()
+            unique_id = self.expense_import_service._generate_expense_hash(
+                transaction.value_date.date(),
+                transaction_amount,
+                description_normalized
+            )
             expense_data = {
                 'amount': transaction_amount,
                 'currency': transaction.transaction_amount.currency,
                 'expense_date': transaction.value_date.isoformat(),
-                'description':  self._extract_description(transaction.remittance_information),
+                'description': description,
                 'payment_method': 'card',
-                'vendor': 'test',
-                'unique_id': f"{account_id}_{transaction_amount}_{transaction.value_date}",
+                'vendor': vendor,
+                'unique_id': unique_id,
                 'tags': ["bank_import", "auto_sync"]
             }
             expenses.append(expense_data)
@@ -76,9 +88,10 @@ class BankTransactionImportService:
         # Import Expense
 
         imported_count = 0
-
+        expense_duplicate_count = 0
         for expense_data in expense_data_list:
             if expense_data.get('is_duplicate', False):
+                expense_duplicate_count += 1
                 continue
 
             expense_create = ExpenseCreate(
@@ -92,14 +105,13 @@ class BankTransactionImportService:
                 subcategory_id=expense_data.get('suggested_subcategory_id'),
                 tags=expense_data.get('tags', [])
             )
-
             expense = expense_crud.create_for_user(self.db, obj_in=expense_create, user_id=user_id)
             imported_count += 1
-
         return {
             'success': True,
             'message': f'Successfully imported {imported_count} expenses',
             'imported_count': imported_count,
             'total_found': len(transactions),
-            'total_expenses': len(expense_data_list)
+            'total_expenses': len(expense_data_list),
+            'expense_duplicate_found': expense_duplicate_count
         }
