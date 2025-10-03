@@ -44,7 +44,7 @@ class CategoryBreakdownItem(BaseModel):
     category_name: str
     category_color: Optional[str] = None
     category_icon: Optional[str] = None
-    total_amount: Decimal
+    total_amount: int
     expense_count: int
     percentage: Decimal
 
@@ -56,19 +56,18 @@ class CategoryAnalytics(BaseModel):
     period_start: date
     period_end: date
     period_type: PeriodType
-    total_amount: Decimal
-    total_expense: int
-    currency: int
-    categories: List[CategoryBreakdownItem]
+    total_amount: int
+    currency: Optional[str] = None
+    categories: Optional[List[CategoryBreakdownItem]] = None
 
 
 class SubcategoryBreakdownItem(BaseModel):
-    subcategory_id: int
+    subcategory_id: str
     subcategory_name: str
-    parent_category_id: int
-    total_amount: Decimal
+    parent_category_id: str
+    total_amount: int
     expense_count: int
-    percentage: Decimal
+    percentage: Optional[Decimal] = None
 
 
 class SubcategoryAnalytics(BaseModel):
@@ -78,8 +77,6 @@ class SubcategoryAnalytics(BaseModel):
     total_amount: Decimal
     total_expenses: int
     currency: str
-    parent_category_id: Optional[str] = None
-    parent_category_name: Optional[str] = None
     subcategories: List[SubcategoryBreakdownItem]
 
 
