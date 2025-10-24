@@ -1,149 +1,73 @@
-from typing import Optional, List, Dict, Any
+from typing import List, Optional, Literal
 from datetime import date
-from pydantic import BaseModel, validator
-from decimal import Decimal
-from enum import Enum
+from pydantic import BaseModel, Field, validator
+from uuid import UUID
 
 
-class PeriodType(str, Enum):
-    MONTHLY = "monthly"
-    YEARLY = "yearly"
-    CUSTOM = "custom"
+# Enums
+GroupByType = Literal["day", "week", "month"]
 
 
-class AnalyticsFilters(BaseModel):
-    year: Optional[int] = None
-    month: Optional[int] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    category_id: Optional[int] = None
-    currency: Optional[str] = None
+# Request Schemas
 
-    @validator("month")
-    def validate_month(cls, v):
-        if v is not None and (v < 1 or v > 12):
-            raise ValueError("Month must be between 1 and 12")
-        return v
+class AnalyticsRequest(BaseModel):
+    start_date: date = Field(..., description="Start date of the analytics period")
+    end_date: date = Field(..., description="End date of the analytics period")
+    category_ids: Optional[List[UUID]] = Field(None, description="List of category IDs to filter by")
+    group_by: GroupByType = Field("month", description="Grouping type for the analytics data")
+    include_previous_period: bool = Field(False, description="Include data from the previous period")
 
-    @validator("year")
-    def validate_year(cls, v):
-        if v is not None and (v < 2000 or v > 2100):
-            raise ValueError("Year must be between 2000 and 2100")
-        return v
-
-    @validator("end_date", pre=False, always=True)
-    def validate_date_range(cls, v, values):
-        start_date = values.get("start_date")
-        if start_date and v and v < start_date:
+    @validator('end_date')
+    def end_date_after_start_date(cls, v, values):
+        if 'start_date' in values and v < values['start_date']:
             raise ValueError("End date must be after start date")
         return v
 
 
-class CategoryBreakdownItem(BaseModel):
-    category_id: str
+# Response schemas
+class CategoryBreakdown(BaseModel):
+    category_id: UUID
     category_name: str
-    category_color: Optional[str] = None
-    category_icon: Optional[str] = None
-    total_amount: int
-    expense_count: int
-    percentage: Decimal
+    amount: str
+    currency: str
 
     class Config:
-        json_encoders = {Decimal: lambda v: float(v) if v is not None else None}
+        from_attributes = True
 
-
-class CategoryAnalytics(BaseModel):
-    period_start: date
-    period_end: date
-    period_type: PeriodType
-    total_amount: int
-    currency: Optional[str] = None
-    categories: Optional[List[CategoryBreakdownItem]] = None
-
-
-class SubcategoryBreakdownItem(BaseModel):
-    subcategory_id: str
-    subcategory_name: str
-    parent_category_id: str
-    total_amount: int
-    expense_count: int
-    percentage: Optional[Decimal] = None
-
-
-class SubcategoryAnalytics(BaseModel):
-    period_start: date
-    period_end: date
-    period_type: PeriodType
-    total_amount: Decimal
-    total_expenses: int
+class AnalyticsDataPoint(BaseModel):
+    date: str,
+    total_amount: str,
     currency: str
-    subcategories: List[SubcategoryBreakdownItem]
+    category_breakdowns: List[CategoryBreakdown]
 
-
-class TrendDataPoint(BaseModel):
-    date: date
-    period_label: str
-    total_amount: Decimal
-    expense_count: int
-    daily_average: Optional[Decimal] = None
-
-
-class TrendAnalytics(BaseModel):
-    period_start: date
-    period_end: date
-    period_type: PeriodType
-    total_amount: Decimal
-    total_expense: int
-    currency: str
-    trend_points: List[TrendDataPoint]
-    average_per_period: Decimal
-    growth_rate: Optional[Decimal] = None
-
-
-class MonthlyComparisonItem(BaseModel):
-    year: int
-    month: int
-    month_name: str
-    total_amount: Decimal
-    expense_count: int
-    daily_average: Optional[str] = None
-    top_category: Optional[str] = None
-    top_category_amount: Optional[Decimal] = None
-
-
-class MonthlyComparison(BaseModel):
-    currency: str
-    month1: MonthlyComparisonItem
-    month2: MonthlyComparisonItem
-    amount_difference: Decimal
-    percentage_change: Decimal
-    percentage_difference: Decimal
-    expense_count_change: int
-
+    class Config:
+        from_attributes = True
 
 class AnalyticsSummary(BaseModel):
-    period_start: date
-    period_end: date
+    total_current: str
+    total_previous: Optional[str] = None
+    change_percentage: Optional[str] = None
+    average_per_period: str
     currency: str
-    total_amount: Decimal
-    total_expenses: int
-    unique_categories: int
-    average_per_expense: Decimal
-    daily_average: Decimal
-    top_category: Optional[CategoryBreakdownItem] = None
-    top_spending_day: Optional[date] = None
-    top_spending_day_amount: Optional[Decimal] = None
+    period_count: int
+
+    class Config:
+        from_attributes = True
+
+class AnalyticsResponse(BaseModel):
+    current_period: List[AnalyticsDataPoint]
+    previouse_period: Optional[List[AnalyticsDataPoint]]
+    summary: AnalyticsSummary
+    request_params: AnalyticsRequest
+
+    class Config:
+        from_attributes = True
 
 
-class TrendAnalyticsRequest(BaseModel):
-    start_date: date
-    end_date: date
-    groupping: str = "monthly"
-    category_id: Optional[str] = None
+# Export Schemas
 
+class ExportFormat(BaseModel):
+    format: Literal["csv"] = "csv"
 
-class MonthlyComparisonRequest(BaseModel):
-    month1_year: int
-    month1_month: int
-    month2_year: int
-    month2_month: int
+class ExportRequest(BaseModel):
+    format: Literal["csv"] = "csv"
