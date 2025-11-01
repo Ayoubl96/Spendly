@@ -17,6 +17,7 @@ import { BudgetOverviewPage } from './pages/budget/BudgetOverviewPage'
 import { BudgetManagementPage } from './pages/budget/BudgetManagementPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
 import { PaymentMethodsPage } from './pages/settings/PaymentMethodsPage'
+import { AnalyticsPage } from './pages/analytics/AnalyticsPage'
 
 // Auth protection
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
@@ -62,6 +63,7 @@ function App() {
               <Route path="categories" element={<CategoriesPage />} />
               <Route path="budget" element={<BudgetOverviewPage />} />
               <Route path="budget/manage/:id" element={<BudgetManagementPage />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/payment-methods" element={<PaymentMethodsPage />} />
               <Route index element={<Navigate to="dashboard" replace />} />

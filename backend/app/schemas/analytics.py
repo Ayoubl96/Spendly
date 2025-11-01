@@ -10,16 +10,23 @@ GroupByType = Literal["day", "week", "month"]
 
 # Request Schemas
 
+
 class AnalyticsRequest(BaseModel):
     start_date: date = Field(..., description="Start date of the analytics period")
     end_date: date = Field(..., description="End date of the analytics period")
-    category_ids: Optional[List[UUID]] = Field(None, description="List of category IDs to filter by")
-    group_by: GroupByType = Field("month", description="Grouping type for the analytics data")
-    include_previous_period: bool = Field(False, description="Include data from the previous period")
+    category_ids: Optional[List[UUID]] = Field(
+        None, description="List of category IDs to filter by"
+    )
+    group_by: GroupByType = Field(
+        "month", description="Grouping type for the analytics data"
+    )
+    include_previous_period: bool = Field(
+        False, description="Include data from the previous period"
+    )
 
-    @validator('end_date')
+    @validator("end_date")
     def end_date_after_start_date(cls, v, values):
-        if 'start_date' in values and v < values['start_date']:
+        if "start_date" in values and v < values["start_date"]:
             raise ValueError("End date must be after start date")
         return v
 
@@ -34,14 +41,16 @@ class CategoryBreakdown(BaseModel):
     class Config:
         from_attributes = True
 
+
 class AnalyticsDataPoint(BaseModel):
-    date: str,
-    total_amount: str,
+    date: str
+    total_amount: str
     currency: str
     category_breakdowns: List[CategoryBreakdown]
 
     class Config:
         from_attributes = True
+
 
 class AnalyticsSummary(BaseModel):
     total_current: str
@@ -54,11 +63,12 @@ class AnalyticsSummary(BaseModel):
     class Config:
         from_attributes = True
 
+
 class AnalyticsResponse(BaseModel):
     current_period: List[AnalyticsDataPoint]
-    previouse_period: Optional[List[AnalyticsDataPoint]]
+    previous_period: Optional[List[AnalyticsDataPoint]]
     summary: AnalyticsSummary
-    request_params: AnalyticsRequest
+    request: AnalyticsRequest
 
     class Config:
         from_attributes = True
@@ -66,8 +76,10 @@ class AnalyticsResponse(BaseModel):
 
 # Export Schemas
 
+
 class ExportFormat(BaseModel):
     format: Literal["csv"] = "csv"
+
 
 class ExportRequest(BaseModel):
     format: Literal["csv"] = "csv"
