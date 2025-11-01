@@ -13,11 +13,13 @@ import {
   User,
   Tags,
   CreditCard,
+  ChartBar,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Analytics", href: "/analytics", icon: ChartBar },
   { name: "Expenses", href: "/expenses", icon: Receipt },
   { name: "Categories", href: "/categories", icon: Tags },
   {
