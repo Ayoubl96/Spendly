@@ -30,13 +30,18 @@ def get_expense_analytics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AnalyticsResponse:
+    # Parse comma-separated category_ids string into a list of UUIDs
+    parsed_category_ids = None
+    if category_ids:
+        parsed_category_ids = [UUID(cat_id.strip()) for cat_id in category_ids.split(",")]
+
     current_period = analytics_crud.get_analytics_data(
         db=db,
         user_id=current_user.id,
         start_date=start_date,
         end_date=end_date,
         group_by=group_by,
-        category_ids=category_ids,
+        category_ids=parsed_category_ids,
     )
 
     previous_period = None
@@ -49,7 +54,7 @@ def get_expense_analytics(
             start_date=prev_start,
             end_date=prev_end,
             group_by=group_by,
-            category_ids=category_ids,
+            category_ids=parsed_category_ids,
         )
 
     currency = current_period[0]["currency"] if current_period else "EUR"
@@ -64,7 +69,7 @@ def get_expense_analytics(
         start_date=start_date,
         end_date=end_date,
         group_by=group_by,
-        category_ids=category_ids,
+        category_ids=parsed_category_ids,
         include_previous_period=include_previous_period,
     )
     return AnalyticsResponse(

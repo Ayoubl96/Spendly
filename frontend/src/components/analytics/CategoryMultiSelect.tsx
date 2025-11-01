@@ -1,72 +1,76 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from "react";
+import { IconRenderer } from "../../utils/iconRenderer";
 
 interface Category {
-  id: string
-  name: string
-  icon?: string
+  id: string;
+  name: string;
+  icon?: string;
 }
 
 interface CategoryMultiSelectProps {
-  categories: Category[]
-  selectedCategoryIds: string[]
-  onSelectionChange: (categoryIds: string[]) => void
-  loading?: boolean
+  categories: Category[];
+  selectedCategoryIds: string[];
+  onSelectionChange: (categoryIds: string[]) => void;
+  loading?: boolean;
 }
 
 export const CategoryMultiSelect: React.FC<CategoryMultiSelectProps> = ({
   categories,
   selectedCategoryIds,
   onSelectionChange,
-  loading = false
+  loading = false,
 }) => {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleToggleCategory = (categoryId: string) => {
     if (selectedCategoryIds.includes(categoryId)) {
-      onSelectionChange(selectedCategoryIds.filter(id => id !== categoryId))
+      onSelectionChange(selectedCategoryIds.filter((id) => id !== categoryId));
     } else {
-      onSelectionChange([...selectedCategoryIds, categoryId])
+      onSelectionChange([...selectedCategoryIds, categoryId]);
     }
-  }
+  };
 
   const handleSelectAll = () => {
     if (selectedCategoryIds.length === categories.length) {
-      onSelectionChange([])
+      onSelectionChange([]);
     } else {
-      onSelectionChange(categories.map(c => c.id))
+      onSelectionChange(categories.map((c) => c.id));
     }
-  }
+  };
 
   const getSelectedLabel = () => {
     if (selectedCategoryIds.length === 0) {
-      return 'All Categories'
+      return "All Categories";
     } else if (selectedCategoryIds.length === 1) {
-      const category = categories.find(c => c.id === selectedCategoryIds[0])
-      return category?.name || 'Unknown'
+      const category = categories.find((c) => c.id === selectedCategoryIds[0]);
+      return category?.name || "Unknown";
     } else {
-      return `${selectedCategoryIds.length} Categories`
+      return `${selectedCategoryIds.length} Categories`;
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="w-64 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
         Loading categories...
       </div>
-    )
+    );
   }
 
   return (
@@ -77,12 +81,17 @@ export const CategoryMultiSelect: React.FC<CategoryMultiSelectProps> = ({
       >
         <span className="truncate">{getSelectedLabel()}</span>
         <svg
-          className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
       </button>
 
@@ -93,7 +102,9 @@ export const CategoryMultiSelect: React.FC<CategoryMultiSelectProps> = ({
               onClick={handleSelectAll}
               className="w-full px-3 py-2 text-left text-sm font-medium text-blue-600 hover:bg-blue-50 rounded"
             >
-              {selectedCategoryIds.length === categories.length ? 'Deselect All' : 'Select All'}
+              {selectedCategoryIds.length === categories.length
+                ? "Deselect All"
+                : "Select All"}
             </button>
           </div>
 
@@ -110,7 +121,13 @@ export const CategoryMultiSelect: React.FC<CategoryMultiSelectProps> = ({
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <span className="ml-3 text-sm text-gray-700">
-                  {category.icon && <span className="mr-2">{category.icon}</span>}
+                  {category.icon && (
+                    <IconRenderer
+                      icon={category.icon}
+                      size={16}
+                      className="text-dark drop-shadow-sm"
+                    />
+                  )}
                   {category.name}
                 </span>
               </label>
@@ -119,5 +136,5 @@ export const CategoryMultiSelect: React.FC<CategoryMultiSelectProps> = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};
