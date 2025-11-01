@@ -40,6 +40,7 @@ interface CategoryBreakdown {
     amount: number
     count: number
   }[]
+  [key: string]: any  // Index signature for Recharts compatibility
 }
 
 export function CategorySummary({ expenses, dateRange }: CategorySummaryProps) {
@@ -374,7 +375,7 @@ export function CategorySummary({ expenses, dateRange }: CategorySummaryProps) {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percentage }) => `${name} ${percentage.toFixed(1)}%`}
+                      label={(entry: any) => `${entry.name} ${entry.percentage.toFixed(1)}%`}
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="totalAmount"
