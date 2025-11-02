@@ -18,6 +18,8 @@ interface ExpenseLineChartProps {
   currency: string
   selectedCategoryIds?: string[]
   showByCategory?: boolean
+  visibleCategories?: string[]
+  onToggleCategoryVisibility?: (categoryName: string) => void
 }
 
 // Color palette for categories
@@ -40,7 +42,9 @@ export const ExpenseLineChart: React.FC<ExpenseLineChartProps> = ({
   groupBy,
   currency,
   selectedCategoryIds = [],
-  showByCategory = true
+  showByCategory = true,
+  visibleCategories = [],
+  onToggleCategoryVisibility
 }) => {
   // Prepare chart data with category breakdowns
   const chartData = useMemo(() => {
@@ -101,6 +105,14 @@ export const ExpenseLineChart: React.FC<ExpenseLineChartProps> = ({
     }).format(value)
   }
 
+  // Filter categories based on visibility
+  const displayCategories = useMemo(() => {
+    if (!showByCategory || visibleCategories.length === 0) {
+      return categories
+    }
+    return categories.filter(cat => visibleCategories.includes(cat))
+  }, [categories, visibleCategories, showByCategory])
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -140,7 +152,35 @@ export const ExpenseLineChart: React.FC<ExpenseLineChartProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Trends</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Expense Trends</h3>
+
+        {/* Category visibility toggles */}
+        {showByCategory && categories.length > 0 && onToggleCategoryVisibility && (
+          <div className="flex flex-wrap gap-2">
+            {categories.map((categoryName, index) => {
+              const isVisible = visibleCategories.includes(categoryName)
+              const color = CATEGORY_COLORS[index % CATEGORY_COLORS.length]
+
+              return (
+                <button
+                  key={categoryName}
+                  onClick={() => onToggleCategoryVisibility(categoryName)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    isVisible
+                      ? 'text-white shadow-md'
+                      : 'text-gray-400 bg-gray-100 hover:bg-gray-200'
+                  }`}
+                  style={isVisible ? { backgroundColor: color } : {}}
+                >
+                  {categoryName}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -169,21 +209,24 @@ export const ExpenseLineChart: React.FC<ExpenseLineChartProps> = ({
           />
 
           {/* Show category lines if enabled and categories exist */}
-          {showByCategory && categories.length > 0 ? (
+          {showByCategory && displayCategories.length > 0 ? (
             <>
-              {/* Render a line for each category */}
-              {categories.map((categoryName, index) => (
-                <Line
-                  key={categoryName}
-                  type="monotone"
-                  dataKey={categoryName}
-                  stroke={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                  name={categoryName}
-                />
-              ))}
+              {/* Render a line for each visible category */}
+              {displayCategories.map((categoryName) => {
+                const index = categories.indexOf(categoryName)
+                return (
+                  <Line
+                    key={categoryName}
+                    type="monotone"
+                    dataKey={categoryName}
+                    stroke={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name={categoryName}
+                  />
+                )
+              })}
               {/* Total line (dashed for distinction) */}
               <Line
                 type="monotone"

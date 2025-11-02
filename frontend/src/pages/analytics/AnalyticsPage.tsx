@@ -4,6 +4,7 @@ import { GroupingToggle } from '../../components/analytics/GroupingToggle'
 import { CategoryMultiSelect } from '../../components/analytics/CategoryMultiSelect'
 import { AnalyticsSummaryCards } from '../../components/analytics/AnalyticsSummaryCards'
 import { ExpenseLineChart } from '../../components/analytics/ExpenseLineChart'
+import { CategoryBarChart } from '../../components/analytics/CategoryBarChart'
 import { ExportButtons } from '../../components/analytics/ExportButtons'
 import { useAnalytics } from '../../hooks/useAnalytics'
 import { TimeRangePreset, GroupByType, AnalyticsRequest, Category } from '../../types/api.types'
@@ -19,6 +20,8 @@ export const AnalyticsPage: React.FC = () => {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const [includePreviousPeriod, setIncludePreviousPeriod] = useState(false)
   const [showByCategory, setShowByCategory] = useState(true)
+  const [showBarChart, setShowBarChart] = useState(true)
+  const [visibleCategories, setVisibleCategories] = useState<string[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
 
@@ -57,10 +60,38 @@ export const AnalyticsPage: React.FC = () => {
   // Fetch analytics data
   const { data, isLoading, isError, error } = useAnalytics(analyticsParams)
 
+  // Initialize visible categories when data loads
+  useEffect(() => {
+    if (data && data.current_period.length > 0) {
+      const categoryNames = new Set<string>()
+      data.current_period.forEach((dataPoint) => {
+        if (dataPoint.category_breakdowns) {
+          dataPoint.category_breakdowns.forEach((breakdown) => {
+            categoryNames.add(breakdown.category_name)
+          })
+        }
+      })
+      // Initialize with all categories visible
+      setVisibleCategories(Array.from(categoryNames))
+    }
+  }, [data])
+
   const handleRangeChange = (preset: TimeRangePreset, start: Date, end: Date) => {
     setSelectedPreset(preset)
     setStartDate(start)
     setEndDate(end)
+  }
+
+  const handleToggleCategoryVisibility = (categoryName: string) => {
+    setVisibleCategories((prev) => {
+      if (prev.includes(categoryName)) {
+        // Don't allow hiding all categories
+        if (prev.length === 1) return prev
+        return prev.filter((cat) => cat !== categoryName)
+      } else {
+        return [...prev, categoryName]
+      }
+    })
   }
 
   return (
@@ -141,7 +172,19 @@ export const AnalyticsPage: React.FC = () => {
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="showByCategory" className="ml-2 text-sm text-gray-700">
-                  Show category breakdown
+                  Show category breakdown (Line Chart)
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showBarChart"
+                  checked={showBarChart}
+                  onChange={(e) => setShowBarChart(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="showBarChart" className="ml-2 text-sm text-gray-700">
+                  Show category bar chart
                 </label>
               </div>
             </div>
@@ -172,7 +215,7 @@ export const AnalyticsPage: React.FC = () => {
               <AnalyticsSummaryCards summary={data.summary} />
             </div>
 
-            {/* Chart */}
+            {/* Line Chart */}
             <div className="mb-6">
               <ExpenseLineChart
                 currentPeriodData={data.current_period}
@@ -181,8 +224,22 @@ export const AnalyticsPage: React.FC = () => {
                 currency={data.summary.currency}
                 selectedCategoryIds={selectedCategoryIds}
                 showByCategory={showByCategory}
+                visibleCategories={visibleCategories}
+                onToggleCategoryVisibility={handleToggleCategoryVisibility}
               />
             </div>
+
+            {/* Bar Chart */}
+            {showBarChart && (
+              <div className="mb-6">
+                <CategoryBarChart
+                  currentPeriodData={data.current_period}
+                  previousPeriodData={data.previous_period}
+                  currency={data.summary.currency}
+                  visibleCategories={visibleCategories}
+                />
+              </div>
+            )}
 
             {/* Export Section */}
             <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
