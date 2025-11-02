@@ -74,6 +74,8 @@ yarn-error.log*
 /frontend/build
 /frontend/.pnp
 .pnp.js
+./frontend/node_modules/
+./frontend/build/
 
 # Production
 /build
