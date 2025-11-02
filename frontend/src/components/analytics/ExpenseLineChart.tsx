@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   LineChart,
   Line,
@@ -9,34 +9,76 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
-import { AnalyticsDataPoint } from '../../types/api.types'
+import { AnalyticsDataPoint, CategoryBreakdown } from '../../types/api.types'
 
 interface ExpenseLineChartProps {
   currentPeriodData: AnalyticsDataPoint[]
   previousPeriodData?: AnalyticsDataPoint[] | null
   groupBy: 'day' | 'week' | 'month'
   currency: string
+  selectedCategoryIds?: string[]
+  showByCategory?: boolean
 }
+
+// Color palette for categories
+const CATEGORY_COLORS = [
+  '#3B82F6', // Blue
+  '#10B981', // Green
+  '#F59E0B', // Amber
+  '#EF4444', // Red
+  '#8B5CF6', // Purple
+  '#EC4899', // Pink
+  '#14B8A6', // Teal
+  '#F97316', // Orange
+  '#6366F1', // Indigo
+  '#84CC16', // Lime
+]
 
 export const ExpenseLineChart: React.FC<ExpenseLineChartProps> = ({
   currentPeriodData,
   previousPeriodData,
   groupBy,
-  currency
+  currency,
+  selectedCategoryIds = [],
+  showByCategory = true
 }) => {
-  // Prepare chart data
-  const chartData = currentPeriodData.map((dataPoint, index) => {
-    const item: any = {
-      date: formatDate(dataPoint.date, groupBy),
-      current: parseFloat(dataPoint.total_amount)
-    }
+  // Prepare chart data with category breakdowns
+  const chartData = useMemo(() => {
+    return currentPeriodData.map((dataPoint, index) => {
+      const item: any = {
+        date: formatDate(dataPoint.date, groupBy),
+        current: parseFloat(dataPoint.total_amount)
+      }
 
-    if (previousPeriodData && previousPeriodData[index]) {
-      item.previous = parseFloat(previousPeriodData[index].total_amount)
-    }
+      // Add previous period total if available
+      if (previousPeriodData && previousPeriodData[index]) {
+        item.previous = parseFloat(previousPeriodData[index].total_amount)
+      }
 
-    return item
-  })
+      // Add category breakdowns if showing by category
+      if (showByCategory && dataPoint.category_breakdowns) {
+        dataPoint.category_breakdowns.forEach((breakdown: CategoryBreakdown) => {
+          // Use category name as the key for the chart data
+          item[breakdown.category_name] = parseFloat(breakdown.amount)
+        })
+      }
+
+      return item
+    })
+  }, [currentPeriodData, previousPeriodData, groupBy, showByCategory])
+
+  // Get unique categories from the data
+  const categories = useMemo(() => {
+    const categorySet = new Set<string>()
+    currentPeriodData.forEach((dataPoint) => {
+      if (dataPoint.category_breakdowns) {
+        dataPoint.category_breakdowns.forEach((breakdown: CategoryBreakdown) => {
+          categorySet.add(breakdown.category_name)
+        })
+      }
+    })
+    return Array.from(categorySet)
+  }, [currentPeriodData])
 
   function formatDate(dateStr: string, grouping: string): string {
     const date = new Date(dateStr)
@@ -64,11 +106,21 @@ export const ExpenseLineChart: React.FC<ExpenseLineChartProps> = ({
       return (
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-medium text-gray-900 mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.name === 'current' ? 'Current' : 'Previous'}: {formatCurrency(entry.value)}
-            </p>
-          ))}
+          {payload.map((entry: any, index: number) => {
+            // Format the label for display
+            let displayName = entry.name
+            if (entry.name === 'current') {
+              displayName = showByCategory ? 'Total (Current)' : 'Current Period'
+            } else if (entry.name === 'previous') {
+              displayName = 'Previous Period'
+            }
+
+            return (
+              <p key={index} style={{ color: entry.color }} className="text-sm">
+                {displayName}: {formatCurrency(entry.value)}
+              </p>
+            )
+          })}
         </div>
       )
     }
@@ -105,28 +157,70 @@ export const ExpenseLineChart: React.FC<ExpenseLineChartProps> = ({
           <Tooltip content={<CustomTooltip />} />
           <Legend
             wrapperStyle={{ paddingTop: '20px' }}
-            formatter={(value) => value === 'current' ? 'Current Period' : 'Previous Period'}
+            formatter={(value) => {
+              if (value === 'current') {
+                return showByCategory ? 'Total (Current)' : 'Current Period'
+              }
+              if (value === 'previous') {
+                return 'Previous Period'
+              }
+              return value // Category names
+            }}
           />
-          <Line
-            type="monotone"
-            dataKey="current"
-            stroke="#3B82F6"
-            strokeWidth={2}
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-            name="current"
-          />
-          {previousPeriodData && (
-            <Line
-              type="monotone"
-              dataKey="previous"
-              stroke="#9CA3AF"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-              name="previous"
-            />
+
+          {/* Show category lines if enabled and categories exist */}
+          {showByCategory && categories.length > 0 ? (
+            <>
+              {/* Render a line for each category */}
+              {categories.map((categoryName, index) => (
+                <Line
+                  key={categoryName}
+                  type="monotone"
+                  dataKey={categoryName}
+                  stroke={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name={categoryName}
+                />
+              ))}
+              {/* Total line (dashed for distinction) */}
+              <Line
+                type="monotone"
+                dataKey="current"
+                stroke="#1F2937"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+                name="current"
+              />
+            </>
+          ) : (
+            /* Show only total lines when not showing by category */
+            <>
+              <Line
+                type="monotone"
+                dataKey="current"
+                stroke="#3B82F6"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+                name="current"
+              />
+              {previousPeriodData && (
+                <Line
+                  type="monotone"
+                  dataKey="previous"
+                  stroke="#9CA3AF"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="previous"
+                />
+              )}
+            </>
           )}
         </LineChart>
       </ResponsiveContainer>

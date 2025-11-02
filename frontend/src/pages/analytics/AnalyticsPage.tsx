@@ -18,6 +18,7 @@ export const AnalyticsPage: React.FC = () => {
   const [groupBy, setGroupBy] = useState<GroupByType>('month')
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const [includePreviousPeriod, setIncludePreviousPeriod] = useState(false)
+  const [showByCategory, setShowByCategory] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
 
@@ -118,17 +119,31 @@ export const AnalyticsPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center mt-6">
-              <input
-                type="checkbox"
-                id="comparePrevious"
-                checked={includePreviousPeriod}
-                onChange={(e) => setIncludePreviousPeriod(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="comparePrevious" className="ml-2 text-sm text-gray-700">
-                Compare with previous period
-              </label>
+            <div className="flex flex-col gap-2 mt-6">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="comparePrevious"
+                  checked={includePreviousPeriod}
+                  onChange={(e) => setIncludePreviousPeriod(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="comparePrevious" className="ml-2 text-sm text-gray-700">
+                  Compare with previous period
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="showByCategory"
+                  checked={showByCategory}
+                  onChange={(e) => setShowByCategory(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="showByCategory" className="ml-2 text-sm text-gray-700">
+                  Show category breakdown
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -164,6 +179,8 @@ export const AnalyticsPage: React.FC = () => {
                 previousPeriodData={data.previous_period}
                 groupBy={groupBy}
                 currency={data.summary.currency}
+                selectedCategoryIds={selectedCategoryIds}
+                showByCategory={showByCategory}
               />
             </div>
 
