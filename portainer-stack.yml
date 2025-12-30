@@ -122,7 +122,7 @@ services:
     container_name: spendly-frontend
     # Remove external port exposure - only accessible via proxy manager
     expose:
-      - "81"
+      - "80"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost"]
