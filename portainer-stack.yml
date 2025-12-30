@@ -1,26 +1,26 @@
 # Spendly Production Deployment with Nginx Proxy Manager
-# 
+#
 # IMPORTANT: This configuration now uses Nginx Proxy Manager for SSL and proxy management
 # 1. Deploy this stack
 # 2. Access Nginx Proxy Manager at http://your-server-ip:81
 # 3. Default login: admin@example.com / changeme
 # 4. Configure proxy hosts for your domains
 #
-version: '3.8'
+version: "3.8"
 
 services:
   # Nginx Proxy Manager - Web UI for managing SSL certificates and proxy hosts
   nginx-proxy-manager:
-    image: 'jc21/nginx-proxy-manager:latest'
+    image: "jc21/nginx-proxy-manager:latest"
     container_name: spendly-nginx-proxy-manager
     restart: unless-stopped
     ports:
       # Public HTTP/HTTPS ports
-      - '80:80'     # HTTP traffic
-      - '443:443'   # HTTPS traffic  
-      - '81:81'     # Admin Web UI (change this port for security)
+      - "80:80" # HTTP traffic
+      - "443:443" # HTTPS traffic
+      - "81:81" # Admin Web UI (change this port for security)
     environment:
-      DISABLE_IPV6: 'true'
+      DISABLE_IPV6: "true"
     volumes:
       - npm_data:/data
       - npm_letsencrypt:/etc/letsencrypt
@@ -46,7 +46,11 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-spendly_user} -d ${DB_NAME:-spendly_prod}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER:-spendly_user} -d ${DB_NAME:-spendly_prod}",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -102,7 +106,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s  # Allow more time for migrations
+      start_period: 120s # Allow more time for migrations
     networks:
       - spendly-network
 
@@ -118,7 +122,7 @@ services:
     container_name: spendly-frontend
     # Remove external port exposure - only accessible via proxy manager
     expose:
-      - "80"
+      - "81"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost"]
