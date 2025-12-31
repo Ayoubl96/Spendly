@@ -66,11 +66,11 @@ services:
       - spendly-network
       - traefik_traefik-net
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.spendly-api.rule=Host(`spendly-api.ayoublefhim.com`)"
-      - "traefik.http.routers.spendly-api.entrypoints=web"
-      - "traefik.http.services.spendly-api.loadbalancer.server.port=8001"
-      - "traefik.docker.network=traefik_traefik-net"
+      traefik.enable: "true"
+      traefik.http.routers.spendly-api.rule: "Host(`spendly-api.ayoublefhim.com`)"
+      traefik.http.routers.spendly-api.entrypoints: "web"
+      traefik.http.services.spendly-api.loadbalancer.server.port: "8001"
+      traefik.docker.network: "traefik_traefik-net"
 
   frontend:
     build:
@@ -96,11 +96,11 @@ services:
       - spendly-network
       - traefik_traefik-net
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.spendly.rule=Host(`spendly.ayoublefhim.com`)"
-      - "traefik.http.routers.spendly.entrypoints=web"
-      - "traefik.http.services.spendly.loadbalancer.server.port=80"
-      - "traefik.docker.network=traefik_traefik-net"
+      traefik.enable: "true"
+      traefik.http.routers.spendly.rule: "Host(`spendly.ayoublefhim.com`)"
+      traefik.http.routers.spendly.entrypoints: "web"
+      traefik.http.services.spendly.loadbalancer.server.port: "80"
+      traefik.docker.network: "traefik_traefik-net"
 
 networks:
   spendly-network:
