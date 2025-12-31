@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-  # Database
   database:
     image: postgres:15-alpine
     container_name: spendly-database
@@ -22,7 +21,6 @@ services:
     networks:
       - spendly-network
 
-  # Backend Service
   backend:
     build:
       context: ./backend
@@ -66,16 +64,14 @@ services:
       start_period: 120s
     networks:
       - spendly-network
-      - traefik-net
+      - traefik_traefik-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.spendly-api.rule=Host(`spendly-api.ayoublefhim.com`)"
-      - "traefik.http.routers.spendly-api.entrypoints=websecure"
-      - "traefik.http.routers.spendly-api.tls.certresolver=cloudflare"
+      - "traefik.http.routers.spendly-api.entrypoints=web"
       - "traefik.http.services.spendly-api.loadbalancer.server.port=8001"
-      - "traefik.docker.network=traefik-net"
+      - "traefik.docker.network=traefik_traefik-net"
 
-  # Frontend Service
   frontend:
     build:
       context: ./frontend
@@ -98,21 +94,19 @@ services:
       - backend
     networks:
       - spendly-network
-      - traefik-net
+      - traefik_traefik-net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.spendly.rule=Host(`spendly.ayoublefhim.com`)"
-      - "traefik.http.routers.spendly.entrypoints=websecure"
-      - "traefik.http.routers.spendly.tls.certresolver=cloudflare"
+      - "traefik.http.routers.spendly.entrypoints=web"
       - "traefik.http.services.spendly.loadbalancer.server.port=80"
-      - "traefik.docker.network=traefik-net"
+      - "traefik.docker.network=traefik_traefik-net"
 
 networks:
   spendly-network:
     driver: bridge
-  traefik-net:
+  traefik_traefik-net:
     external: true
-    name: traefik_traefik-net
 
 volumes:
   postgres_data:
