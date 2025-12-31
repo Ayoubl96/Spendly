@@ -1,36 +1,6 @@
-# Spendly Production Deployment with Nginx Proxy Manager
-#
-# IMPORTANT: This configuration now uses Nginx Proxy Manager for SSL and proxy management
-# 1. Deploy this stack
-# 2. Access Nginx Proxy Manager at http://your-server-ip:81
-# 3. Default login: admin@example.com / changeme
-# 4. Configure proxy hosts for your domains
-#
 version: "3.8"
 
 services:
-  # Nginx Proxy Manager - Web UI for managing SSL certificates and proxy hosts
-  nginx-proxy-manager:
-    image: "jc21/nginx-proxy-manager:latest"
-    container_name: spendly-nginx-proxy-manager
-    restart: unless-stopped
-    ports:
-      # Public HTTP/HTTPS ports
-      - "80:80" # HTTP traffic
-      - "443:443" # HTTPS traffic
-      - "81:81" # Admin Web UI (change this port for security)
-    environment:
-      DISABLE_IPV6: "true"
-    volumes:
-      - npm_data:/data
-      - npm_letsencrypt:/etc/letsencrypt
-    networks:
-      - spendly-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:81/api"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
   # Database
   database:
     image: postgres:15-alpine
@@ -43,14 +13,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    ports:
-      - "5432:5432"
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${DB_USER:-spendly_user} -d ${DB_NAME:-spendly_prod}",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-spendly_user} -d ${DB_NAME:-spendly_prod}"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -64,7 +28,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     container_name: spendly-backend
-    # Remove external port exposure - only accessible via proxy manager
     expose:
       - "8001"
     environment:
@@ -95,20 +58,22 @@ services:
       database:
         condition: service_healthy
     restart: unless-stopped
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 3
-        window: 60s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s # Allow more time for migrations
+      start_period: 120s
     networks:
       - spendly-network
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.spendly-api.rule=Host(`spendly-api.ayoublefhim.com`)"
+      - "traefik.http.routers.spendly-api.entrypoints=websecure"
+      - "traefik.http.routers.spendly-api.tls.certresolver=cloudflare"
+      - "traefik.http.services.spendly-api.loadbalancer.server.port=8001"
+      - "traefik.docker.network=traefik-net"
 
   # Frontend Service
   frontend:
@@ -120,7 +85,6 @@ services:
         - REACT_APP_API_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}/api/v1
         - REACT_APP_UPLOAD_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}/uploads
     container_name: spendly-frontend
-    # Remove external port exposure - only accessible via proxy manager
     expose:
       - "80"
     restart: unless-stopped
@@ -134,10 +98,21 @@ services:
       - backend
     networks:
       - spendly-network
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.spendly.rule=Host(`spendly.ayoublefhim.com`)"
+      - "traefik.http.routers.spendly.entrypoints=websecure"
+      - "traefik.http.routers.spendly.tls.certresolver=cloudflare"
+      - "traefik.http.services.spendly.loadbalancer.server.port=80"
+      - "traefik.docker.network=traefik-net"
 
 networks:
   spendly-network:
     driver: bridge
+  traefik-net:
+    external: true
+    name: traefik_traefik-net
 
 volumes:
   postgres_data:
@@ -145,8 +120,4 @@ volumes:
   uploads_data:
     driver: local
   logs_data:
-    driver: local
-  npm_data:
-    driver: local
-  npm_letsencrypt:
     driver: local
