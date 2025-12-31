@@ -13,6 +13,7 @@ interface PaymentMethodDisplayProps {
 let paymentMethodsCache: PaymentMethod[] | null = null
 let cacheTime = 0
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+let loadingPromise: Promise<PaymentMethod[]> | null = null // FIX: prevent concurrent calls
 
 export function PaymentMethodDisplay({ 
   paymentMethodId, 
@@ -21,8 +22,6 @@ export function PaymentMethodDisplay({
 }: PaymentMethodDisplayProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
   const [loading, setLoading] = useState(false)
-
-
 
   useEffect(() => {
     if (paymentMethodId) {
@@ -45,15 +44,21 @@ export function PaymentMethodDisplay({
         return
       }
 
-      // Load all payment methods and cache them
-      const paymentMethods = await apiService.getPaymentMethods(true) // Include inactive
+      // FIX: Prevent concurrent API calls - reuse existing promise
+      if (!loadingPromise) {
+        loadingPromise = apiService.getPaymentMethods(true)
+      }
+      
+      const paymentMethods = await loadingPromise
       paymentMethodsCache = paymentMethods
-      cacheTime = now
+      cacheTime = Date.now()
+      loadingPromise = null
       
       const method = paymentMethods.find(pm => pm.id === paymentMethodId)
       setPaymentMethod(method || null)
     } catch (err) {
       console.error('Error loading payment method details:', err)
+      loadingPromise = null
       setPaymentMethod(null)
     } finally {
       setLoading(false)
@@ -137,7 +142,6 @@ export function PaymentMethodDisplay({
   }
 
   // Fall back to legacy payment method display
-  // If both paymentMethodId and legacyPaymentMethod are missing, show a more helpful message
   if (!paymentMethodId && !legacyPaymentMethod) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
@@ -159,4 +163,5 @@ export function PaymentMethodDisplay({
 export const clearPaymentMethodCache = () => {
   paymentMethodsCache = null
   cacheTime = 0
+  loadingPromise = null // FIX: Also clear loading promise
 }
