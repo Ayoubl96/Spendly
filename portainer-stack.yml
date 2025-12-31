@@ -49,6 +49,8 @@ services:
       - BACKEND_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com/}
       - UPLOAD_PATH=/app/uploads
       - UPLOAD_URL=${BACKEND_URL:-https://spendly-api.ayoublefhim.com}/uploads
+      - DB_POOL_SIZE=20
+      - DB_MAX_OVERFLOW=30
     volumes:
       - uploads_data:/app/uploads
       - logs_data:/app/logs
